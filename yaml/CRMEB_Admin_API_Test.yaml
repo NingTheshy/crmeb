@@ -1,0 +1,2568 @@
+openapi: 3.0.3
+info:
+  title: CRMEB Admin 管理端 API 测试文档
+  description: |
+    CRMEB 多商户 Java 版商城系统 — Admin 管理端模块 API 接口文档（端口8080）。
+    所有管理端接口使用 `api/admin/*` 路径前缀。
+
+    **认证方式**: 请求头 `Authori-zation` 传入登录返回的 token。
+    Admin 端 token 以 `TOKEN:ADMIN:` 为前缀存储到 Redis（不同于 Front 端的 UUID 格式）。
+
+    **测试数据说明**: 所有示例中的 ID 值均为数据库感知的模拟数据，
+    与 `eb_system_admin`、`eb_store_product`、`eb_store_order`、`eb_user` 等表结构保持一致。
+
+    **通用响应格式**: `{"code": 200, "message": "success", "data": {...}}`
+
+    **错误码**:
+    - 400：请求参数校验失败
+    - 401：认证失败 / token 无效或过期
+    - 404：资源不存在
+  version: 2.0.0
+  contact:
+    name: CRMEB Team
+    email: admin@crmeb.com
+    url: https://www.crmeb.com
+
+servers:
+  - url: http://localhost:8080
+    description: Admin 管理端服务器
+
+# =============================================================================
+# 标签分组
+# =============================================================================
+tags:
+  - name: Admin-登录
+    description: 管理端登录、退出、用户信息
+  - name: Admin-主页
+    description: 首页统计数据
+  - name: Admin-管理员
+    description: 后台管理员CRUD
+  - name: Admin-菜单
+    description: 系统菜单管理
+  - name: Admin-角色
+    description: 角色权限管理
+  - name: Admin-系统配置
+    description: 系统参数配置
+  - name: Admin-商品
+    description: 商品管理
+  - name: Admin-订单
+    description: 订单管理
+  - name: Admin-用户
+    description: 会员管理
+  - name: Admin-优惠券
+    description: 优惠券管理
+  - name: Admin-拼团
+    description: 拼团商品管理
+  - name: Admin-秒杀
+    description: 秒杀商品管理
+  - name: Admin-砍价
+    description: 砍价商品管理
+  - name: Admin-公共
+    description: 公开接口
+
+# =============================================================================
+# 安全定义
+# =============================================================================
+security:
+  - AdminToken: []
+
+# =============================================================================
+# 组件定义
+# =============================================================================
+components:
+  securitySchemes:
+    AdminToken:
+      type: apiKey
+      in: header
+      name: Authori-zation
+      description: Admin 管理端认证 token（格式：TOKEN:ADMIN:{uuid}）
+
+  schemas:
+    # ===== 通用响应包装 =====
+    CommonResult:
+      type: object
+      properties:
+        code:
+          type: integer
+          description: 响应码，200=成功
+          example: 200
+        message:
+          type: string
+          description: 响应消息
+          example: "success"
+        data:
+          description: 响应数据
+
+    CommonResultNoData:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 200
+        message:
+          type: string
+          example: "success"
+
+    PageInfo:
+      type: object
+      properties:
+        page:
+          type: integer
+          example: 1
+        limit:
+          type: integer
+          example: 10
+        total:
+          type: integer
+          example: 156
+        list:
+          type: array
+          items:
+            type: object
+
+    # ===== 管理员实体 (eb_system_admin) =====
+    SystemAdmin:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: 管理员ID
+          example: 1
+        account:
+          type: string
+          description: 管理员账号
+          example: "admin"
+        realName:
+          type: string
+          description: 管理员姓名
+          example: "系统管理员"
+        roles:
+          type: string
+          description: 角色权限菜单ID
+          example: "1"
+        lastIp:
+          type: string
+          description: 最后登录IP
+          example: "192.168.1.100"
+        level:
+          type: integer
+          description: 管理员级别
+          example: 0
+        status:
+          type: boolean
+          description: 状态 true有效/false无效
+          example: true
+        phone:
+          type: string
+          description: 手机号码
+          example: "13800138000"
+        isSms:
+          type: boolean
+          description: 是否接收短信
+          example: true
+        loginCount:
+          type: integer
+          example: 128
+        updateTime:
+          type: string
+          format: date-time
+          example: "2025-06-15T10:30:00"
+        createTime:
+          type: string
+          format: date-time
+          example: "2025-01-01T08:00:00"
+
+    LoginRequest:
+      type: object
+      required:
+        - account
+        - password
+      properties:
+        account:
+          type: string
+          description: 登录账号
+          example: "admin"
+        password:
+          type: string
+          description: 登录密码
+          example: "123456"
+
+    LoginResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          description: 认证令牌
+          example: "TOKEN:ADMIN:550e8400-e29b-41d4-a716-446655440000"
+        user:
+          $ref: '#/components/schemas/SystemAdmin'
+
+    SystemAdminAddRequest:
+      type: object
+      required:
+        - account
+        - pwd
+        - realName
+        - roles
+        - status
+        - phone
+      properties:
+        account:
+          type: string
+          maxLength: 32
+          description: 管理员账号
+          example: "newadmin"
+        pwd:
+          type: string
+          maxLength: 32
+          description: 管理员密码
+          example: "Admin@123456"
+        realName:
+          type: string
+          maxLength: 16
+          description: 管理员姓名
+          example: "新管理员"
+        roles:
+          type: string
+          maxLength: 128
+          description: 角色权限菜单ID
+          example: "1"
+        status:
+          type: boolean
+          description: 状态
+          example: true
+        phone:
+          type: string
+          pattern: '^1[3-9]\d{9}$'
+          description: 手机号
+          example: "13900139000"
+
+    SystemAdminUpdateRequest:
+      type: object
+      required:
+        - id
+      properties:
+        id:
+          type: integer
+          example: 2
+        realName:
+          type: string
+          example: "更新后的姓名"
+        roles:
+          type: string
+          example: "2"
+        status:
+          type: boolean
+          example: false
+        phone:
+          type: string
+          example: "15012348765"
+
+    # ===== 商品实体 (eb_store_product) =====
+    StoreProduct:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 5001
+        image:
+          type: string
+          description: 商品主图
+          example: "https://img.crmeb.com/product/sku_5001_main.jpg"
+        sliderImage:
+          type: array
+          items:
+            type: string
+          description: 轮播图
+          example:
+            - "https://img.crmeb.com/product/sku_5001_1.jpg"
+            - "https://img.crmeb.com/product/sku_5001_2.jpg"
+        storeName:
+          type: string
+          description: 商品名称
+          example: "2025新款潮流T恤 纯棉短袖"
+        storeInfo:
+          type: string
+          description: 商品简介
+          example: "优质纯棉面料，透气舒适，百搭款式"
+        keyword:
+          type: string
+          description: 搜索关键词
+          example: "T恤,短袖,纯棉,潮流"
+        cateId:
+          type: string
+          description: 分类ID(逗号分隔)
+          example: "10,101"
+        price:
+          type: number
+          format: decimal
+          description: 商品售价
+          example: 129.00
+        otPrice:
+          type: number
+          format: decimal
+          description: 市场价
+          example: 299.00
+        cost:
+          type: number
+          format: decimal
+          description: 成本价
+          example: 65.00
+        postage:
+          type: number
+          format: decimal
+          description: 邮费
+          example: 0.00
+        unitName:
+          type: string
+          description: 单位
+          example: "件"
+        stock:
+          type: integer
+          description: 库存
+          example: 500
+        sales:
+          type: integer
+          description: 销量
+          example: 2365
+        isShow:
+          type: boolean
+          description: 是否上架
+          example: true
+        isHot:
+          type: boolean
+          description: 是否热卖
+          example: true
+        isNew:
+          type: boolean
+          description: 是否新品
+          example: false
+        isGood:
+          type: boolean
+          description: 是否优品推荐
+          example: true
+        specType:
+          type: boolean
+          description: 规格类型 false单规格/true多规格
+          example: true
+        tempId:
+          type: integer
+          description: 运费模板ID
+          example: 1
+        giveIntegral:
+          type: integer
+          description: 赠送积分
+          example: 10
+
+    StoreProductAddRequest:
+      type: object
+      required:
+        - image
+        - sliderImage
+        - storeName
+        - keyword
+        - cateId
+        - unitName
+        - isSub
+        - tempId
+        - specType
+        - attr
+        - attrValue
+      properties:
+        id:
+          type: integer
+          description: 修改时传入商品ID
+        image:
+          type: string
+          maxLength: 255
+          example: "https://img.crmeb.com/product/new_sku.jpg"
+        sliderImage:
+          type: string
+          maxLength: 2000
+          example: '["https://img.crmeb.com/product/new_1.jpg","https://img.crmeb.com/product/new_2.jpg"]'
+        storeName:
+          type: string
+          maxLength: 128
+          example: "2025新款高端蓝牙耳机 降噪"
+        keyword:
+          type: string
+          maxLength: 255
+          example: "蓝牙耳机,降噪,无线"
+        cateId:
+          type: string
+          maxLength: 64
+          example: "20,201"
+        unitName:
+          type: string
+          maxLength: 32
+          example: "件"
+        sort:
+          type: integer
+          example: 100
+        isHot:
+          type: boolean
+          example: true
+        isNew:
+          type: boolean
+          example: true
+        isGood:
+          type: boolean
+          example: false
+        giveIntegral:
+          type: integer
+          example: 50
+        isSub:
+          type: boolean
+          example: false
+        ficti:
+          type: integer
+          example: 0
+        tempId:
+          type: integer
+          example: 1
+        specType:
+          type: boolean
+          example: false
+        attr:
+          type: array
+          items:
+            type: object
+            properties:
+              attrName:
+                type: string
+                example: "默认"
+              attrValues:
+                type: array
+                items:
+                  type: string
+                example: ["默认"]
+        attrValue:
+          type: array
+          items:
+            type: object
+            properties:
+              suk:
+                type: string
+                example: "默认"
+              price:
+                type: number
+                example: 199.00
+              stock:
+                type: integer
+                example: 300
+              image:
+                type: string
+                example: ""
+              barCode:
+                type: string
+                example: ""
+              weight:
+                type: number
+                example: 0.5
+              volume:
+                type: number
+                example: 0.01
+              otPrice:
+                type: number
+                example: 499.00
+              cost:
+                type: number
+                example: 120.00
+        content:
+          type: string
+          description: 商品详情HTML
+          example: "<p>高端蓝牙耳机，支持ANC主动降噪...</p>"
+        couponIds:
+          type: array
+          items:
+            type: integer
+          example: [1, 3]
+
+    StoreProductSearchRequest:
+      type: object
+      required:
+        - type
+      properties:
+        type:
+          type: integer
+          minimum: 1
+          maximum: 5
+          description: "1=出售中 2=仓库中 3=已售完 4=警戒库存 5=回收中"
+          example: 1
+        cateId:
+          type: string
+          example: "10"
+        keywords:
+          type: string
+          example: "T恤"
+        priceOrder:
+          type: string
+          enum: [asc, desc]
+          example: "asc"
+        salesOrder:
+          type: string
+          enum: [asc, desc]
+          example: "desc"
+
+    # ===== 订单实体 (eb_store_order) =====
+    StoreOrder:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 88001
+        orderId:
+          type: string
+          description: 订单号
+          example: "20250620100000088001"
+        uid:
+          type: integer
+          example: 10001
+        realName:
+          type: string
+          description: 收货人姓名
+          example: "张三"
+        userPhone:
+          type: string
+          example: "13800138000"
+        userAddress:
+          type: string
+          description: 收货地址
+          example: "广东省深圳市南山区科技园路100号"
+        totalNum:
+          type: integer
+          description: 商品总数
+          example: 2
+        totalPrice:
+          type: number
+          format: decimal
+          description: 订单总价
+          example: 258.00
+        payPrice:
+          type: number
+          format: decimal
+          description: 实付金额
+          example: 238.00
+        couponPrice:
+          type: number
+          format: decimal
+          description: 优惠券抵扣
+          example: 20.00
+        paid:
+          type: boolean
+          description: 支付状态
+          example: true
+        payType:
+          type: string
+          description: 支付方式
+          example: "weixin"
+        status:
+          type: integer
+          description: "0=待发货 1=待收货 2=待评价 3=已完成"
+          example: 1
+        refundStatus:
+          type: integer
+          description: "0=未退款 1=申请中 2=已退款 3=退款中"
+          example: 0
+        deliveryName:
+          type: string
+          description: 快递公司
+          example: "顺丰速运"
+        deliveryId:
+          type: string
+          description: 快递单号
+          example: "SF1234567890123"
+        deliveryType:
+          type: string
+          description: "express=快递 send=送货上门 fictitious=虚拟发货"
+          example: "express"
+        shippingType:
+          type: integer
+          description: "1=快递 2=门店自提"
+          example: 1
+        mark:
+          type: string
+          description: 用户备注
+          example: "请发顺丰快递"
+        remark:
+          type: string
+          description: 管理员备注
+          example: "VIP客户，优先处理"
+        createTime:
+          type: string
+          format: date-time
+          example: "2025-06-20T10:30:00"
+        payTime:
+          type: string
+          format: date-time
+          example: "2025-06-20T10:32:15"
+
+    StoreOrderSearchRequest:
+      type: object
+      required:
+        - type
+      properties:
+        orderNo:
+          type: string
+          example: "20250620100000088001"
+        dateLimit:
+          type: string
+          example: "today"
+        status:
+          type: string
+          enum: [all, unPaid, notShipped, spike, bargain, complete, toBeWrittenOff, refunding, refunded, deleted]
+          example: "notShipped"
+        type:
+          type: integer
+          minimum: 0
+          maximum: 2
+          example: 0
+
+    OrderSendRequest:
+      type: object
+      required:
+        - orderNo
+      properties:
+        orderNo:
+          type: string
+          example: "20250620100000088001"
+        deliveryType:
+          type: string
+          enum: [express, send, fictitious]
+          default: express
+          example: "express"
+        deliveryName:
+          type: string
+          example: "顺丰速运"
+        deliveryId:
+          type: string
+          example: "SF1234567890123"
+        deliveryCode:
+          type: string
+          example: "SF"
+
+    # ===== 用户实体 (eb_user) =====
+    User:
+      type: object
+      properties:
+        uid:
+          type: integer
+          description: 用户ID
+          example: 10001
+        account:
+          type: string
+          example: "user001"
+        nickname:
+          type: string
+          description: 用户昵称
+          example: "张三"
+        avatar:
+          type: string
+          description: 头像URL
+          example: "https://img.crmeb.com/avatar/user_10001.jpg"
+        phone:
+          type: string
+          description: 手机号
+          example: "13800138000"
+        sex:
+          type: integer
+          description: 性别 0未知/1男/2女
+          example: 1
+        nowMoney:
+          type: number
+          format: decimal
+          description: 用户余额
+          example: 568.50
+        brokeragePrice:
+          type: number
+          format: decimal
+          description: 佣金金额
+          example: 120.00
+        integral:
+          type: integer
+          description: 积分
+          example: 3500
+        experience:
+          type: integer
+          description: 经验值
+          example: 1280
+        status:
+          type: boolean
+          description: 状态 true正常/false禁止
+          example: true
+        level:
+          type: integer
+          description: 会员等级
+          example: 2
+        spreadUid:
+          type: integer
+          description: 推广人ID
+          example: 10000
+        isPromoter:
+          type: boolean
+          description: 是否为推广员
+          example: true
+        payCount:
+          type: integer
+          description: 购买次数
+          example: 15
+        spreadCount:
+          type: integer
+          description: 下级人数
+          example: 8
+        loginType:
+          type: string
+          description: 登录类型 h5/wechat/routine
+          example: "wechat"
+        createTime:
+          type: string
+          format: date-time
+          example: "2025-03-15T14:22:00"
+        lastLoginTime:
+          type: string
+          format: date-time
+          example: "2025-06-20T09:15:00"
+
+    # ===== 优惠券实体 (eb_store_coupon) =====
+    StoreCouponRequest:
+      type: object
+      required:
+        - name
+        - money
+        - minPrice
+        - type
+        - total
+        - useType
+        - useStartTime
+        - useEndTime
+      properties:
+        name:
+          type: string
+          example: "满200减30优惠券"
+        money:
+          type: number
+          example: 30.00
+        minPrice:
+          type: number
+          description: 最低消费金额
+          example: 200.00
+        type:
+          type: integer
+          description: "1=通用券 2=商品券 3=品类券"
+          example: 1
+        total:
+          type: integer
+          description: 发放总量
+          example: 1000
+        useType:
+          type: integer
+          description: "1=全场通用 2=指定商品 3=指定分类"
+          example: 1
+        useStartTime:
+          type: string
+          format: date
+          example: "2025-06-01"
+        useEndTime:
+          type: string
+          format: date
+          example: "2025-12-31"
+
+    # ===== 拼团实体 (eb_store_combination) =====
+    StoreCombinationRequest:
+      type: object
+      required:
+        - productId
+        - title
+        - image
+        - price
+        - people
+        - stock
+        - startTime
+        - stopTime
+      properties:
+        productId:
+          type: integer
+          example: 5100
+        title:
+          type: string
+          example: "2人拼团 2025新款T恤"
+        image:
+          type: string
+          example: "https://img.crmeb.com/pintuan/group_001.jpg"
+        price:
+          type: number
+          description: 拼团价
+          example: 89.00
+        people:
+          type: integer
+          description: 成团人数
+          example: 2
+        stock:
+          type: integer
+          description: 拼团库存
+          example: 200
+        startTime:
+          type: string
+          format: date
+          example: "2025-06-01"
+        stopTime:
+          type: string
+          format: date
+          example: "2025-12-31"
+
+    # ===== 秒杀实体 (eb_store_seckill) =====
+    StoreSeckillRequest:
+      type: object
+      required:
+        - productId
+        - title
+        - image
+        - price
+        - stock
+        - startTime
+        - stopTime
+      properties:
+        productId:
+          type: integer
+          example: 5200
+        title:
+          type: string
+          example: "限时秒杀-蓝牙耳机"
+        image:
+          type: string
+          example: "https://img.crmeb.com/seckill/sk_001.jpg"
+        price:
+          type: number
+          description: 秒杀价
+          example: 99.00
+        stock:
+          type: integer
+          description: 秒杀库存
+          example: 100
+        startTime:
+          type: string
+          format: date
+          example: "2025-06-25"
+        stopTime:
+          type: string
+          format: date
+          example: "2025-07-25"
+
+    # ===== 砍价实体 (eb_store_bargain) =====
+    StoreBargainRequest:
+      type: object
+      required:
+        - productId
+        - title
+        - image
+        - minPrice
+        - stock
+        - startTime
+        - stopTime
+        - bargainNum
+      properties:
+        productId:
+          type: integer
+          example: 5300
+        title:
+          type: string
+          example: "邀请好友砍价 智能手表"
+        image:
+          type: string
+          example: "https://img.crmeb.com/bargain/bg_001.jpg"
+        minPrice:
+          type: number
+          description: 最低砍到价
+          example: 59.00
+        stock:
+          type: integer
+          example: 50
+        startTime:
+          type: string
+          format: date
+          example: "2025-06-01"
+        stopTime:
+          type: string
+          format: date
+          example: "2025-12-31"
+        bargainNum:
+          type: integer
+          description: 帮砍人数
+          example: 20
+
+    # ===== 错误响应 =====
+    ErrorResponse:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 400
+        message:
+          type: string
+          example: "参数校验失败"
+        data:
+          nullable: true
+          example: null
+
+    UnauthorizedResponse:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 401
+        message:
+          type: string
+          example: "Token已过期，请重新登录"
+        data:
+          nullable: true
+
+    NotFoundResponse:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 404
+        message:
+          type: string
+          example: "数据不存在"
+        data:
+          nullable: true
+
+  # ===== 响应示例 =====
+  examples:
+    SuccessExample:
+      value:
+        code: 200
+        message: "操作成功"
+        data: {}
+    LoginSuccessExample:
+      value:
+        code: 200
+        message: "登录成功"
+        data:
+          token: "{{ADMIN_TOKEN}}"
+          user:
+            id: 1
+            account: "admin"
+            realName: "系统管理员"
+            roles: "1"
+            level: 0
+            status: true
+            phone: "13800138000"
+    PageListExample:
+      value:
+        code: 200
+        message: null
+        data:
+          page: 1
+          limit: 10
+          total: 156
+          list: []
+    ErrorExample:
+      value:
+        code: 400
+        message: "参数验证失败"
+        data: null
+    UnauthorizedExample:
+      value:
+        code: 401
+        message: "Token已过期或无效"
+        data: null
+    NotFoundExample:
+      value:
+        code: 404
+        message: "数据不存在"
+        data: null
+
+# =============================================================================
+# API 路径定义
+# =============================================================================
+paths:
+  # ====== Admin 登录 ======
+  /api/admin/login:
+    post:
+      tags: [Admin-登录]
+      summary: PC管理端登录
+      description: |
+        管理员账号密码登录，返回token和用户信息。
+        **数据库表**: eb_system_admin
+        **认证需求**: 无需认证
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            examples:
+              validLogin:
+                summary: 正向-正确账号密码
+                value:
+                  account: "admin"
+                  password: "123456"
+              emptyAccount:
+                summary: 异常-空账号
+                value:
+                  account: ""
+                  password: "123456"
+              wrongPassword:
+                summary: 异常-错误密码
+                value:
+                  account: "admin"
+                  password: "wrongpassword"
+      responses:
+        '200':
+          description: 登录成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/CommonResult'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/LoginResponse'
+              examples:
+                success:
+                  $ref: '#/components/examples/LoginSuccessExample'
+        '400':
+          description: 参数校验失败或账号密码错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/admin/logout:
+    get:
+      tags: [Admin-登录]
+      summary: PC管理端登出
+      security:
+        - AdminToken: []
+      responses:
+        '200':
+          description: 登出成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResult'
+        '401':
+          description: 未登录或token无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedResponse'
+
+  /api/admin/getAdminInfoByToken:
+    get:
+      tags: [Admin-登录]
+      summary: 获取当前管理员信息
+      security:
+        - AdminToken: []
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/CommonResult'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/SystemAdmin'
+        '401':
+          description: 未登录或token无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedResponse'
+
+  /api/admin/getMenus:
+    get:
+      tags: [Admin-登录]
+      summary: 获取管理员可访问菜单
+      security:
+        - AdminToken: []
+      responses:
+        '200':
+          description: 菜单列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResult'
+        '401':
+          description: 未登录或token无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedResponse'
+
+  /api/admin/getLoginPic:
+    get:
+      tags: [Admin-登录]
+      summary: 获取登录页背景图
+      security: []
+      responses:
+        '200':
+          description: 登录页图片URL
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResult'
+
+  /api/admin/login/account/detection:
+    post:
+      tags: [Admin-登录]
+      summary: 账号登录检测
+      security: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                account:
+                  type: string
+              example:
+                account: "admin"
+      responses:
+        '200':
+          description: 检测结果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResult'
+
+  /api/admin/login/admin/update:
+    post:
+      tags: [Admin-登录]
+      summary: 修改登录用户信息
+      security:
+        - AdminToken: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                realName:
+                  type: string
+                  example: "新管理员名"
+                phone:
+                  type: string
+                  example: "13900139000"
+              example:
+                realName: "新管理员名"
+                phone: "13900139000"
+      responses:
+        '200':
+          description: 操作结果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResult'
+        '401':
+          description: 未登录或token无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedResponse'
+
+  /api/admin/login/update/password:
+    post:
+      tags: [Admin-登录]
+      summary: 修改登录用户密码
+      security:
+        - AdminToken: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                oldPwd:
+                  type: string
+                  example: "123456"
+                newPwd:
+                  type: string
+                  example: "Admin@123456"
+              example:
+                oldPwd: "123456"
+                newPwd: "Admin@123456"
+      responses:
+        '200':
+          description: 操作结果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResult'
+        '400':
+          description: 参数校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: 未登录或token无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedResponse'
+
+  # ====== Admin 主页统计 ======
+  /api/admin/statistics/home/index:
+    get:
+      tags: [Admin-主页]
+      summary: 首页概览数据
+      description: |
+        返回今日订单数、今日销售额、新增用户数、总用户数等概览数据。
+        对应数据库聚合查询 eb_store_order, eb_user 表。
+      security:
+        - AdminToken: []
+      responses:
+        '200':
+          description: 首页统计数据
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResult'
+        '401':
+          description: 未登录或token无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedResponse'
+
+  /api/admin/statistics/home/chart/user:
+    get:
+      tags: [Admin-主页]
+      summary: 用户增长曲线图
+      security:
+        - AdminToken: []
+      responses:
+        '200':
+          description: 用户增长数据
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResult'
+        '401':
+          description: 未登录或token无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedResponse'
+
+  /api/admin/statistics/home/chart/order:
+    get:
+      tags: [Admin-主页]
+      summary: 30天订单量趋势
+      security:
+        - AdminToken: []
+      responses:
+        '200':
+          description: 订单趋势数据
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResult'
+        '401':
+          description: 未登录或token无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedResponse'
+
+  # ====== Admin 管理员管理 ======
+  /api/admin/system/admin/list:
+    get:
+      tags: [Admin-管理员]
+      summary: 管理员分页列表
+      description: eb_system_admin 表分页查询
+      security:
+        - AdminToken: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+          example: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+          example: 10
+        - name: keywords
+          in: query
+          schema:
+            type: string
+          example: "admin"
+      responses:
+        '200':
+          description: 分页数据
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/CommonResult'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/PageInfo'
+        '401':
+          description: 未登录或token无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedResponse'
+
+  /api/admin/system/admin/save:
+    post:
+      tags: [Admin-管理员]
+      summary: 新增管理员
+      security:
+        - AdminToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SystemAdminAddRequest'
+            examples:
+              validAdd:
+                summary: 正向-有效数据
+                value:
+                  account: "newadmin"
+                  pwd: "Admin@123456"
+                  realName: "新管理员"
+                  roles: "2"
+                  status: true
+                  phone: "13900139000"
+              emptyRequired:
+                summary: 异常-必填为空
+                value:
+                  account: ""
+                  pwd: ""
+                  realName: ""
+                  roles: ""
+                  status: null
+      responses:
+        '200':
+          description: 操作结果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResult'
+        '400':
+          description: 参数校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: 未登录或token无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedResponse'
+
+  /api/admin/system/admin/delete:
+    get:
+      tags: [Admin-管理员]
+      summary: 删除管理员
+      security:
+        - AdminToken: []
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: integer
+          example: 3
+      responses:
+        '200':
+          description: 操作结果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResult'
+        '401':
+          description: 未登录或token无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedResponse'
+        '404':
+          description: 管理员不存在
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundResponse'
+
+  /api/admin/system/admin/update:
+    post:
+      tags: [Admin-管理员]
+      summary: 修改管理员
+      security:
+        - AdminToken: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SystemAdminUpdateRequest'
+            example:
+              id: 2
+              realName: "更新后姓名"
+              roles: "1,2"
+              status: true
+              phone: "15012348765"
+      responses:
+        '200':
+          description: 操作结果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResult'
+        '401':
+          description: 未登录或token无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedResponse'
+
+  /api/admin/system/admin/info:
+    get:
+      tags: [Admin-管理员]
+      summary: 管理员详情
+      security:
+        - AdminToken: []
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: integer
+          examples:
+            valid:
+              value: 1
+            notExist:
+              summary: 边界-不存在ID
+              value: 99999
+      responses:
+        '200':
+          description: 管理员详情
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/CommonResult'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/SystemAdmin'
+        '401':
+          description: 未登录或token无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedResponse'
+        '404':
+          description: 管理员不存在
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundResponse'
+
+  # ====== Admin 商品管理 ======
+  /api/admin/store/product/list:
+    get:
+      tags: [Admin-商品]
+      summary: 商品分页列表
+      description: |
+        eb_store_product 表分页查询，根据type区分不同类别。
+        type: 1=出售中 2=仓库中 3=已售完 4=警戒库存 5=回收中
+      security:
+        - AdminToken: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+          example: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+          example: 10
+        - name: type
+          in: query
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 5
+          examples:
+            onSale:
+              summary: 出售中
+              value: 1
+            recycle:
+              summary: 回收中
+              value: 5
+        - name: cateId
+          in: query
+          schema:
+            type: string
+          example: "10"
+        - name: keywords
+          in: query
+          schema:
+            type: string
+          example: "蓝牙耳机"
+      responses:
+        '200':
+          description: 分页数据
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/CommonResult'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/PageInfo'
+        '401':
+          description: 未登录或token无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedResponse'
+
+  /api/admin/store/product/save:
+    post:
+      tags: [Admin-商品]
+      summary: 新增/修改商品
+      description: 插入 eb_store_product 表及 eb_store_product_attr、eb_store_product_attr_value
+      security:
+        - AdminToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StoreProductAddRequest'
+            examples:
+              singleSpec:
+                summary: 正向-单规格商品
+                value:
+                  image: "https://img.crmeb.com/product/new_sku.jpg"
+                  sliderImage: '["https://img.crmeb.com/product/new_1.jpg"]'
+                  storeName: "2025新款高端蓝牙耳机 主动降噪"
+                  keyword: "蓝牙耳机,降噪,无线"
+                  cateId: "20,201"
+                  unitName: "件"
+                  isSub: false
+                  tempId: 1
+                  specType: false
+                  attr: [{"attrName": "默认", "attrValues": ["默认"]}]
+                  attrValue: [{"suk": "默认", "price": 199.00, "stock": 300, "image": "", "barCode": "", "weight": 0.5, "volume": 0.01, "otPrice": 499.00, "cost": 120.00}]
+                  content: "<p>高端蓝牙耳机详情...</p>"
+                  isHot: true
+                  isNew: true
+                  isGood: false
+                  giveIntegral: 50
+              emptyStoreName:
+                summary: 异常-商品名称为空
+                value:
+                  image: ""
+                  sliderImage: '[]'
+                  storeName: ""
+                  keyword: ""
+                  cateId: ""
+                  unitName: ""
+                  isSub: false
+                  tempId: 0
+                  specType: false
+                  attr: []
+                  attrValue: []
+      responses:
+        '200':
+          description: 操作结果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResult'
+        '400':
+          description: 参数校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: 未登录或token无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedResponse'
+
+  /api/admin/store/product/delete/{id}:
+    get:
+      tags: [Admin-商品]
+      summary: 删除商品
+      description: type=recycle移入回收站，type=delete彻底删除
+      security:
+        - AdminToken: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 5010
+        - name: type
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [recycle, delete]
+          examples:
+            recycle:
+              summary: 移入回收站
+              value: "recycle"
+            delete:
+              summary: 彻底删除
+              value: "delete"
+      responses:
+        '200':
+          description: 操作结果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResult'
+        '401':
+          description: 未登录或token无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedResponse'
+        '404':
+          description: 商品不存在
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundResponse'
+
+  /api/admin/store/product/restore/{id}:
+    get:
+      tags: [Admin-商品]
+      summary: 恢复已删除商品
+      security:
+        - AdminToken: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 5010
+      responses:
+        '200':
+          description: 操作结果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResult'
+        '401':
+          description: 未登录或token无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedResponse'
+
+  /api/admin/store/product/info/{id}:
+    get:
+      tags: [Admin-商品]
+      summary: 商品详情
+      security:
+        - AdminToken: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          examples:
+            valid:
+              value: 5001
+            notExist:
+              summary: 不存在ID
+              value: 999999
+      responses:
+        '200':
+          description: 商品详情
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/CommonResult'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/StoreProduct'
+        '401':
+          description: 未登录或token无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedResponse'
+        '404':
+          description: 商品不存在
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundResponse'
+
+  /api/admin/store/product/putOnShell/{id}:
+    get:
+      tags: [Admin-商品]
+      summary: 商品上架
+      security:
+        - AdminToken: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 5002
+      responses:
+        '200':
+          description: 操作结果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResult'
+        '401':
+          description: 未登录或token无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedResponse'
+
+  /api/admin/store/product/offShell/{id}:
+    get:
+      tags: [Admin-商品]
+      summary: 商品下架
+      security:
+        - AdminToken: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 5001
+      responses:
+        '200':
+          description: 操作结果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResult'
+        '401':
+          description: 未登录或token无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedResponse'
+
+  /api/admin/store/product/listids/{ids}:
+    get:
+      tags: [Admin-商品]
+      summary: 根据id集合获取商品列表
+      security:
+        - AdminToken: []
+      parameters:
+        - name: ids
+          in: path
+          required: true
+          schema:
+            type: array
+            items:
+              type: integer
+          example: "5001,5002,5003"
+      responses:
+        '200':
+          description: 商品列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResult'
+        '401':
+          description: 未登录或token无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedResponse'
+
+  /api/admin/store/product/tabs/headers:
+    get:
+      tags: [Admin-商品]
+      summary: 商品表头数量
+      security:
+        - AdminToken: []
+      parameters:
+        - name: type
+          in: query
+          schema:
+            type: integer
+          example: 1
+      responses:
+        '200':
+          description: 表头数据
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResult'
+        '401':
+          description: 未登录或token无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedResponse'
+
+  /api/admin/store/product/importProduct:
+    post:
+      tags: [Admin-商品]
+      summary: 导入99Api商品
+      security:
+        - AdminToken: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                form:
+                  type: integer
+                  description: "导入平台 1=淘宝 2=京东 3=苏宁 4=拼多多 5=天猫"
+                  example: 1
+                url:
+                  type: string
+                  description: 商品URL
+                  example: "https://item.taobao.com/item.htm?id=123456"
+              example:
+                form: 1
+                url: "https://item.taobao.com/item.htm?id=123456"
+      responses:
+        '200':
+          description: 导入结果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResult'
+        '401':
+          description: 未登录或token无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedResponse'
+
+  /api/admin/store/product/copy/config:
+    post:
+      tags: [Admin-商品]
+      summary: 获取复制商品配置
+      security:
+        - AdminToken: []
+      responses:
+        '200':
+          description: 配置信息
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResult'
+        '401':
+          description: 未登录或token无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedResponse'
+
+  /api/admin/store/product/copy/product:
+    post:
+      tags: [Admin-商品]
+      summary: 复制平台商品
+      security:
+        - AdminToken: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                url:
+                  type: string
+                  example: "https://item.taobao.com/item.htm?id=123456"
+              example:
+                url: "https://item.taobao.com/item.htm?id=123456"
+      responses:
+        '200':
+          description: 复制结果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResult'
+        '401':
+          description: 未登录或token无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedResponse'
+
+  /api/admin/store/product/quick/stock/add:
+    post:
+      tags: [Admin-商品]
+      summary: 快捷添加库存
+      security:
+        - AdminToken: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                id:
+                  type: integer
+                  example: 5001
+                attrUnique:
+                  type: string
+                  example: "abc123"
+                stock:
+                  type: integer
+                  example: 100
+              example:
+                id: 5001
+                attrUnique: "abc123"
+                stock: 100
+      responses:
+        '200':
+          description: 操作结果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResult'
+        '401':
+          description: 未登录或token无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedResponse'
+
+  # ====== Admin 订单管理 ======
+  /api/admin/store/order/list:
+    get:
+      tags: [Admin-订单]
+      summary: 订单分页列表
+      description: eb_store_order 表分页查询
+      security:
+        - AdminToken: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+          example: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+          example: 10
+        - name: status
+          in: query
+          schema:
+            type: integer
+          examples:
+            all:
+              value: 0
+            notShipped:
+              summary: 待发货
+              value: 1
+            completed:
+              summary: 已完成
+              value: 3
+        - name: type
+          in: query
+          schema:
+            type: integer
+          example: 2
+        - name: keywords
+          in: query
+          schema:
+            type: string
+          example: "20250620"
+        - name: dateLimit
+          in: query
+          schema:
+            type: string
+          example: "today"
+      responses:
+        '200':
+          description: 分页数据
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/CommonResult'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/PageInfo'
+        '401':
+          description: 未登录或token无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedResponse'
+
+  /api/admin/store/order/info:
+    get:
+      tags: [Admin-订单]
+      summary: 订单详情
+      security:
+        - AdminToken: []
+      parameters:
+        - name: orderNo
+          in: query
+          required: true
+          schema:
+            type: string
+          example: "20250620100000088001"
+      responses:
+        '200':
+          description: 订单详情
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/CommonResult'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/StoreOrder'
+        '401':
+          description: 未登录或token无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedResponse'
+        '404':
+          description: 订单不存在
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundResponse'
+
+  /api/admin/store/order/send:
+    post:
+      tags: [Admin-订单]
+      summary: 订单发货
+      description: 更新 eb_store_order 的 delivery_name, delivery_id 字段
+      security:
+        - AdminToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderSendRequest'
+            examples:
+              expressDelivery:
+                summary: 正向-快递发货
+                value:
+                  orderNo: "20250620100000088001"
+                  deliveryType: "express"
+                  deliveryName: "顺丰速运"
+                  deliveryId: "SF1234567890123"
+      responses:
+        '200':
+          description: 操作结果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResult'
+        '400':
+          description: 参数校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: 未登录或token无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedResponse'
+
+  /api/admin/store/order/refund:
+    get:
+      tags: [Admin-订单]
+      summary: 同意退款
+      security:
+        - AdminToken: []
+      parameters:
+        - name: orderNo
+          in: query
+          required: true
+          schema:
+            type: string
+          example: "20250620100000088001"
+      responses:
+        '200':
+          description: 操作结果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResult'
+        '401':
+          description: 未登录或token无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedResponse'
+
+  /api/admin/store/order/refund/refuse:
+    get:
+      tags: [Admin-订单]
+      summary: 拒绝退款
+      security:
+        - AdminToken: []
+      parameters:
+        - name: orderNo
+          in: query
+          required: true
+          schema:
+            type: string
+          example: "20250620100000088002"
+        - name: reason
+          in: query
+          required: true
+          schema:
+            type: string
+          example: "不符合退款条件，商品已使用"
+      responses:
+        '200':
+          description: 操作结果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResult'
+        '401':
+          description: 未登录或token无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedResponse'
+
+  # ====== Admin 用户管理 ======
+  /api/admin/user/list:
+    get:
+      tags: [Admin-用户]
+      summary: 用户分页列表
+      description: eb_user 表分页查询
+      security:
+        - AdminToken: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+          example: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+          example: 10
+        - name: keywords
+          in: query
+          schema:
+            type: string
+          example: "张三"
+        - name: status
+          in: query
+          schema:
+            type: integer
+          example: 1
+      responses:
+        '200':
+          description: 分页数据
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/CommonResult'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/PageInfo'
+        '401':
+          description: 未登录或token无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedResponse'
+
+  /api/admin/user/info:
+    get:
+      tags: [Admin-用户]
+      summary: 用户详情
+      security:
+        - AdminToken: []
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: integer
+          example: 10001
+      responses:
+        '200':
+          description: 用户详情
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/CommonResult'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/User'
+        '401':
+          description: 未登录或token无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedResponse'
+        '404':
+          description: 用户不存在
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundResponse'
+
+  /api/admin/user/operate/founds:
+    get:
+      tags: [Admin-用户]
+      summary: 积分/余额操作
+      security:
+        - AdminToken: []
+      parameters:
+        - name: uid
+          in: query
+          required: true
+          schema:
+            type: integer
+          example: 10001
+        - name: type
+          in: query
+          required: true
+          schema:
+            type: integer
+            description: "1=积分 2=余额"
+          example: 1
+        - name: value
+          in: query
+          required: true
+          schema:
+            type: integer
+          example: 100
+        - name: title
+          in: query
+          required: true
+          schema:
+            type: string
+          example: "系统赠送积分"
+      responses:
+        '200':
+          description: 操作结果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResult'
+        '401':
+          description: 未登录或token无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedResponse'
+
+  # ====== Admin 优惠券管理 ======
+  /api/admin/store/coupon/list:
+    get:
+      tags: [Admin-优惠券]
+      summary: 优惠券分页列表
+      security:
+        - AdminToken: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+          example: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+          example: 10
+      responses:
+        '200':
+          description: 分页数据
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/CommonResult'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/PageInfo'
+        '401':
+          description: 未登录或token无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedResponse'
+
+  /api/admin/store/coupon/save:
+    post:
+      tags: [Admin-优惠券]
+      summary: 新增优惠券
+      security:
+        - AdminToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StoreCouponRequest'
+            examples:
+              valid:
+                summary: 正向-满减券
+                value:
+                  name: "满200减30"
+                  money: 30.00
+                  minPrice: 200.00
+                  type: 1
+                  total: 500
+                  useType: 1
+                  useStartTime: "2025-06-01"
+                  useEndTime: "2025-12-31"
+      responses:
+        '200':
+          description: 操作结果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResult'
+        '400':
+          description: 参数校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: 未登录或token无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedResponse'
+
+  # ====== Admin 营销活动 ======
+  /api/admin/store/combination/save:
+    post:
+      tags: [Admin-拼团]
+      summary: 新增拼团商品
+      security:
+        - AdminToken: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StoreCombinationRequest'
+            example:
+              productId: 5100
+              title: "2人拼团 2025新款T恤 低至89元"
+              image: "https://img.crmeb.com/pintuan/group_001.jpg"
+              price: 89.00
+              people: 2
+              stock: 200
+              startTime: "2025-06-01"
+              stopTime: "2025-12-31"
+      responses:
+        '200':
+          description: 操作结果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResult'
+        '401':
+          description: 未登录或token无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedResponse'
+
+  /api/admin/store/seckill/save:
+    post:
+      tags: [Admin-秒杀]
+      summary: 新增秒杀商品
+      security:
+        - AdminToken: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StoreSeckillRequest'
+            example:
+              productId: 5200
+              title: "限时秒杀-蓝牙耳机 99元"
+              image: "https://img.crmeb.com/seckill/sk_001.jpg"
+              price: 99.00
+              stock: 100
+              startTime: "2025-06-25"
+              stopTime: "2025-07-25"
+      responses:
+        '200':
+          description: 操作结果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResult'
+        '401':
+          description: 未登录或token无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedResponse'
+
+  /api/admin/store/bargain/save:
+    post:
+      tags: [Admin-砍价]
+      summary: 新增砍价商品
+      security:
+        - AdminToken: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StoreBargainRequest'
+            example:
+              productId: 5300
+              title: "邀请好友砍价 智能手表 最低59元"
+              image: "https://img.crmeb.com/bargain/bg_001.jpg"
+              minPrice: 59.00
+              stock: 50
+              startTime: "2025-06-01"
+              stopTime: "2025-12-31"
+              bargainNum: 20
+      responses:
+        '200':
+          description: 操作结果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResult'
+        '401':
+          description: 未登录或token无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedResponse'
+
+  # ====== 公共接口 ======
+  /api/public/safety/get:
+    post:
+      tags: [Admin-公共]
+      summary: 获取行为验证码
+      security: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                type:
+                  type: string
+                  default: "default"
+              example:
+                type: "default"
+      responses:
+        '200':
+          description: 验证码数据
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResult'
+
+  /api/public/safety/check:
+    post:
+      tags: [Admin-公共]
+      summary: 验证行为验证码
+      security: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [type, token, pointJson]
+              properties:
+                type:
+                  type: string
+                  example: "default"
+                token:
+                  type: string
+                  example: "captcha_token_abc123"
+                pointJson:
+                  type: string
+                  example: "{}"
+      responses:
+        '200':
+          description: 验证结果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResult'
+
+  /api/public/jsconfig/getcrmebchatconfig:
+    get:
+      tags: [Admin-公共]
+      summary: 获取客服配置
+      security: []
+      responses:
+        '200':
+          description: 客服配置
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResult'
+
+  /api/public/jsconfig/get/front/domain:
+    get:
+      tags: [Admin-公共]
+      summary: 获取移动端域名
+      security: []
+      responses:
+        '200':
+          description: 移动端域名
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResult'

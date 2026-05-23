@@ -1,0 +1,4575 @@
+openapi: 3.0.3
+info:
+  title: CRMEB Front/C端 API 测试文档
+  description: |
+    CRMEB 多商户 Java 版商城系统 — Front 前端/C端模块 API 接口文档（端口8081）。
+    所有前端接口使用 `api/front/*` 路径前缀。
+
+    **认证方式**: 请求头 `Authori-zation` 传入 UUID 格式的 token。
+    Front 端 token 以 UUID 格式直接存储到 Redis（不同于 Admin 端的 `TOKEN:ADMIN:` 前缀）。
+
+    **测试数据说明**: 所有示例中的 ID 值均为数据库感知的模拟数据，
+    与 `eb_user`、`eb_store_product`、`eb_store_order`、`eb_user_address` 等表结构保持一致。
+
+    **通用响应格式**: `{"code": 200, "message": "success", "data": {...}}`
+
+    **错误码**:
+    - 400：请求参数校验失败
+    - 401：认证失败 / token 无效或过期
+    - 404：资源不存在
+  version: 2.0.0
+  contact:
+    name: CRMEB Team
+    email: admin@crmeb.com
+    url: https://www.crmeb.com
+
+servers:
+  - url: http://localhost:8081
+    description: Front 前端/C端服务器
+
+# =============================================================================
+# 标签分组
+# =============================================================================
+tags:
+  - name: Front-登录
+    description: C端用户登录、注册、登出、token校验
+  - name: Front-首页
+    description: 首页数据、商品模块、搜索关键词、分享配置
+  - name: Front-商品
+    description: 商品搜索、详情、评论
+  - name: Front-购物车
+    description: 购物车增删改查
+  - name: Front-订单
+    description: 订单创建、列表、详情、取消、收货、评价、退款
+  - name: Front-支付
+    description: 发起支付、查询支付结果
+  - name: Front-用户中心
+    description: 用户信息、资料修改
+  - name: Front-收货地址
+    description: 收货地址增删改查
+  - name: Front-提现
+    description: 用户余额提现
+  - name: Front-推广
+    description: 推广佣金数据
+  - name: Front-充值
+    description: 用户余额充值
+  - name: Front-签到
+    description: 用户签到与签到记录
+  - name: Front-收藏
+    description: 商品收藏
+  - name: Front-营销-优惠券
+    description: 优惠券领取与列表
+  - name: Front-营销-砍价
+    description: 砍价商品浏览与参与
+  - name: Front-营销-拼团
+    description: 拼团商品浏览
+  - name: Front-营销-秒杀
+    description: 秒杀商品浏览
+  - name: Front-文章
+    description: 文章/帮助中心
+  - name: Front-门店
+    description: 自提门店列表
+  - name: Front-城市
+    description: 城市数据
+  - name: Front-用户优惠券
+    description: 用户已领取的优惠券
+
+# =============================================================================
+# 安全定义
+# =============================================================================
+security:
+  - FrontToken: []
+
+# =============================================================================
+# 组件定义
+# =============================================================================
+components:
+  securitySchemes:
+    FrontToken:
+      type: apiKey
+      in: header
+      name: Authori-zation
+      description: Front 前端/C端认证 token（UUID 格式）
+
+  schemas:
+    # ===== 通用响应包装 =====
+    CommonResult:
+      type: object
+      properties:
+        code:
+          type: integer
+          description: 响应码，200=成功
+          example: 200
+        message:
+          type: string
+          description: 响应消息
+          example: "success"
+        data:
+          description: 响应数据
+
+    CommonResultNoData:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 200
+        message:
+          type: string
+          example: "success"
+
+    PageInfo:
+      type: object
+      properties:
+        page:
+          type: integer
+          example: 1
+        limit:
+          type: integer
+          example: 10
+        total:
+          type: integer
+          example: 156
+        list:
+          type: array
+          items:
+            type: object
+
+    # ===== 用户实体 (eb_user) =====
+    User:
+      type: object
+      properties:
+        uid:
+          type: integer
+          description: 用户ID
+          example: 10001
+        nickname:
+          type: string
+          description: 用户昵称
+          example: "张三"
+        avatar:
+          type: string
+          description: 头像URL
+          example: "https://img.crmeb.com/avatar/user_10001.jpg"
+        phone:
+          type: string
+          description: 手机号
+          example: "13800138000"
+        sex:
+          type: integer
+          description: 性别 0未知/1男/2女
+          example: 1
+        birthday:
+          type: string
+          description: 生日
+          example: "1995-08-15"
+        nowMoney:
+          type: number
+          format: decimal
+          description: 用户余额
+          example: 568.50
+        brokeragePrice:
+          type: number
+          format: decimal
+          description: 佣金金额
+          example: 120.00
+        integral:
+          type: integer
+          description: 积分
+          example: 3500
+        experience:
+          type: integer
+          description: 经验值
+          example: 1280
+        status:
+          type: boolean
+          description: 状态 true正常/false禁止
+          example: true
+        level:
+          type: integer
+          description: 会员等级
+          example: 2
+        spreadUid:
+          type: integer
+          description: 推广人ID
+          example: 10000
+        isPromoter:
+          type: boolean
+          description: 是否为推广员
+          example: true
+        payCount:
+          type: integer
+          description: 购买次数
+          example: 15
+        spreadCount:
+          type: integer
+          description: 下级人数
+          example: 8
+        loginType:
+          type: string
+          description: 登录类型 h5/wechat/routine
+          example: "wechat"
+        addres:
+          type: string
+          description: 默认地址
+          example: "广东省深圳市南山区"
+        createTime:
+          type: string
+          format: date-time
+          example: "2025-03-15T14:22:00"
+        lastLoginTime:
+          type: string
+          format: date-time
+          example: "2025-06-20T09:15:00"
+
+    # ===== 商品实体 (eb_store_product) =====
+    StoreProduct:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 5001
+        image:
+          type: string
+          description: 商品主图
+          example: "https://img.crmeb.com/product/sku_5001_main.jpg"
+        sliderImage:
+          type: array
+          items:
+            type: string
+          description: 轮播图
+          example:
+            - "https://img.crmeb.com/product/sku_5001_1.jpg"
+            - "https://img.crmeb.com/product/sku_5001_2.jpg"
+            - "https://img.crmeb.com/product/sku_5001_3.jpg"
+        storeName:
+          type: string
+          description: 商品名称
+          example: "2025新款潮流T恤 纯棉短袖"
+        storeInfo:
+          type: string
+          description: 商品简介
+          example: "优质纯棉面料，透气舒适，百搭款式，多色可选"
+        keyword:
+          type: string
+          description: 搜索关键词
+          example: "T恤,短袖,纯棉,潮流"
+        cateId:
+          type: string
+          description: 分类ID(逗号分隔)
+          example: "10,101"
+        price:
+          type: number
+          format: decimal
+          description: 商品售价
+          example: 129.00
+        otPrice:
+          type: number
+          format: decimal
+          description: 市场价
+          example: 299.00
+        cost:
+          type: number
+          format: decimal
+          description: 成本价
+          example: 65.00
+        postage:
+          type: number
+          format: decimal
+          description: 邮费
+          example: 0.00
+        unitName:
+          type: string
+          description: 单位
+          example: "件"
+        stock:
+          type: integer
+          description: 库存
+          example: 500
+        sales:
+          type: integer
+          description: 销量
+          example: 2365
+        isShow:
+          type: boolean
+          description: 是否上架
+          example: true
+        isHot:
+          type: boolean
+          description: 是否热卖
+          example: true
+        isNew:
+          type: boolean
+          description: 是否新品
+          example: false
+        isGood:
+          type: boolean
+          description: 是否优品推荐
+          example: true
+        specType:
+          type: boolean
+          description: 规格类型 false单规格/true多规格
+          example: true
+        giveIntegral:
+          type: integer
+          description: 赠送积分
+          example: 10
+        ficti:
+          type: integer
+          description: 虚拟销量
+          example: 120
+        browse:
+          type: integer
+          description: 浏览量
+          example: 8900
+
+    StoreProductSimple:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 5002
+        image:
+          type: string
+          example: "https://img.crmeb.com/product/sku_5002_main.jpg"
+        storeName:
+          type: string
+          example: "夏季冰丝防晒衣 UPF50+"
+        price:
+          type: number
+          format: decimal
+          example: 89.00
+        otPrice:
+          type: number
+          format: decimal
+          example: 199.00
+        sales:
+          type: integer
+          example: 1520
+        isHot:
+          type: boolean
+          example: false
+        isNew:
+          type: boolean
+          example: true
+
+    # ===== 购物车实体 (eb_store_cart) =====
+    StoreCart:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 8001
+        uid:
+          type: integer
+          example: 10001
+        productId:
+          type: integer
+          example: 5001
+        productAttrUnique:
+          type: string
+          description: 商品属性唯一值
+          example: "abc123def456"
+        cartNum:
+          type: integer
+          description: 数量
+          example: 2
+        productInfo:
+          $ref: '#/components/schemas/StoreProductSimple'
+
+    CartSaveRequest:
+      type: object
+      required:
+        - productId
+        - productAttrUnique
+        - cartNum
+        - isNew
+      properties:
+        productId:
+          type: integer
+          description: 商品ID
+          example: 5001
+        productAttrUnique:
+          type: string
+          description: 商品属性唯一值
+          example: "abc123def456"
+        cartNum:
+          type: integer
+          description: 加入数量
+          minimum: 1
+          example: 2
+        isNew:
+          type: boolean
+          description: 是否新商品
+          example: true
+
+    CartDeleteRequest:
+      type: object
+      required:
+        - ids
+      properties:
+        ids:
+          type: array
+          description: 购物车ID列表
+          items:
+            type: integer
+          example: [8001, 8002]
+
+    CartNumRequest:
+      type: object
+      required:
+        - id
+        - number
+      properties:
+        id:
+          type: integer
+          description: 购物车项ID
+          example: 8001
+        number:
+          type: integer
+          description: 修改后数量
+          minimum: 1
+          example: 3
+
+    CartCountResponse:
+      type: object
+      properties:
+        count:
+          type: integer
+          description: 购物车商品总数
+          example: 5
+
+    # ===== 订单实体 (eb_store_order) =====
+    StoreOrder:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 88001
+        orderId:
+          type: string
+          description: 订单号
+          example: "20250620100000088001"
+        uid:
+          type: integer
+          example: 10001
+        realName:
+          type: string
+          example: "张三"
+        userPhone:
+          type: string
+          example: "13800138000"
+        userAddress:
+          type: string
+          description: 收货地址
+          example: "广东省深圳市南山区科技园路100号创新大厦A座501"
+        totalNum:
+          type: integer
+          description: 商品总数
+          example: 2
+        totalPrice:
+          type: number
+          format: decimal
+          description: 订单总价
+          example: 258.00
+        totalPostage:
+          type: number
+          format: decimal
+          description: 邮费
+          example: 0.00
+        payPrice:
+          type: number
+          format: decimal
+          description: 实付金额
+          example: 238.00
+        payPostage:
+          type: number
+          format: decimal
+          example: 0.00
+        couponId:
+          type: integer
+          example: 501
+        couponPrice:
+          type: number
+          format: decimal
+          description: 优惠券抵扣金额
+          example: 20.00
+        useIntegral:
+          type: integer
+          description: 使用积分
+          example: 200
+        integralPrice:
+          type: number
+          format: decimal
+          description: 积分抵扣金额
+          example: 2.00
+        mark:
+          type: string
+          description: 订单备注
+          example: "请发顺丰快递"
+        paid:
+          type: boolean
+          description: 是否已支付
+          example: true
+        payTime:
+          type: string
+          format: date-time
+          example: "2025-06-20T10:05:30"
+        payType:
+          type: string
+          description: 支付方式 weixin/alipay
+          example: "weixin"
+        status:
+          type: integer
+          description: 订单状态 0未付/1待发货/2待收货/3待评价/4已完成/-3已退款
+          example: 1
+        refundStatus:
+          type: integer
+          description: 退款状态 0未退款/1退款中/2已退款
+          example: 0
+        deliveryType:
+          type: string
+          description: 发货类型 express=快递/send=自提
+          example: "express"
+        deliveryName:
+          type: string
+          example: "顺丰速运"
+        deliveryId:
+          type: string
+          example: "SF1234567890"
+        createTime:
+          type: string
+          format: date-time
+          example: "2025-06-20T10:00:00"
+        productList:
+          type: array
+          items:
+            $ref: '#/components/schemas/StoreOrderProduct'
+
+    StoreOrderProduct:
+      type: object
+      properties:
+        productId:
+          type: integer
+          example: 5001
+        productName:
+          type: string
+          example: "2025新款潮流T恤 纯棉短袖"
+        image:
+          type: string
+          example: "https://img.crmeb.com/product/sku_5001_main.jpg"
+        productAttrUnique:
+          type: string
+          example: "abc123def456"
+        sku:
+          type: string
+          description: 商品规格
+          example: "白色 L码"
+        price:
+          type: number
+          format: decimal
+          example: 129.00
+        cartNum:
+          type: integer
+          example: 2
+
+    StoreOrderSimple:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 88001
+        orderId:
+          type: string
+          example: "20250620100000088001"
+        payPrice:
+          type: number
+          format: decimal
+          example: 238.00
+        totalNum:
+          type: integer
+          example: 2
+        paid:
+          type: boolean
+          example: true
+        status:
+          type: integer
+          example: 1
+        createTime:
+          type: string
+          format: date-time
+          example: "2025-06-20T10:00:00"
+        cartInfo:
+          type: array
+          items:
+            $ref: '#/components/schemas/StoreOrderProduct'
+
+    OrderCreateRequest:
+      type: object
+      required:
+        - cartIdList
+        - addressId
+        - payType
+        - from
+      properties:
+        cartIdList:
+          type: array
+          description: 购物车ID列表
+          items:
+            type: integer
+          example: [8001, 8002]
+        addressId:
+          type: integer
+          description: 收货地址ID
+          example: 2001
+        couponId:
+          type: integer
+          description: 优惠券ID(可选)
+          example: 501
+        useIntegral:
+          type: integer
+          description: 使用积分(可选)
+          example: 200
+        mark:
+          type: string
+          description: 订单备注(可选)
+          example: "请发顺丰快递"
+        preOrderNo:
+          type: string
+          description: 预下单订单号(可选)
+          example: ""
+        payType:
+          type: string
+          description: 支付方式
+          enum: [weixin, alipay, yue]
+          example: "weixin"
+        from:
+          type: string
+          description: 订单来源
+          enum: [routine, wechat, h5, pc]
+          example: "wechat"
+
+    OrderCancelRequest:
+      type: object
+      required:
+        - id
+      properties:
+        id:
+          type: integer
+          description: 订单ID
+          example: 88001
+
+    OrderTakeRequest:
+      type: object
+      required:
+        - id
+      properties:
+        id:
+          type: integer
+          description: 订单ID
+          example: 88001
+
+    OrderCommentRequest:
+      type: object
+      required:
+        - productId
+        - orderNo
+        - score
+        - comment
+      properties:
+        productId:
+          type: integer
+          description: 商品ID
+          example: 5001
+        orderNo:
+          type: string
+          description: 订单号
+          example: "20250620100000088001"
+        score:
+          type: integer
+          description: 评分 1-5
+          minimum: 1
+          maximum: 5
+          example: 5
+        comment:
+          type: string
+          description: 评价内容
+          example: "质量非常好，穿着很舒服，值得购买！"
+        pics:
+          type: array
+          description: 评价图片
+          items:
+            type: string
+          example:
+            - "https://img.crmeb.com/comment/img_88001_1.jpg"
+            - "https://img.crmeb.com/comment/img_88001_2.jpg"
+
+    OrderRefundRequest:
+      type: object
+      required:
+        - orderNo
+        - text
+      properties:
+        orderNo:
+          type: string
+          description: 订单号
+          example: "20250620100000088001"
+        text:
+          type: string
+          description: 退款原因
+          example: "商品与描述不符，申请退款"
+        refundPrice:
+          type: number
+          format: decimal
+          description: 退款金额(可选，不填默认全额)
+          example: 238.00
+        pics:
+          type: array
+          description: 凭证图片
+          items:
+            type: string
+          example:
+            - "https://img.crmeb.com/refund/img_88001_1.jpg"
+
+    # ===== 收货地址实体 (eb_user_address) =====
+    UserAddress:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 2001
+        uid:
+          type: integer
+          example: 10001
+        realName:
+          type: string
+          description: 收货人姓名
+          example: "张三"
+        phone:
+          type: string
+          description: 手机号
+          example: "13800138000"
+        province:
+          type: string
+          description: 省份
+          example: "广东省"
+        city:
+          type: string
+          description: 城市
+          example: "深圳市"
+        district:
+          type: string
+          description: 区/县
+          example: "南山区"
+        detail:
+          type: string
+          description: 详细地址
+          example: "科技园路100号创新大厦A座501"
+        postCode:
+          type: integer
+          description: 邮政编码
+          example: 518000
+        isDefault:
+          type: boolean
+          description: 是否默认
+          example: true
+
+    UserAddressEditRequest:
+      type: object
+      required:
+        - realName
+        - phone
+        - province
+        - city
+        - district
+        - detail
+      properties:
+        id:
+          type: integer
+          description: 地址ID(修改时传入，新增时不传)
+          example: 2001
+        realName:
+          type: string
+          description: 收货人姓名
+          example: "张三"
+        phone:
+          type: string
+          description: 手机号
+          example: "13800138000"
+        province:
+          type: string
+          description: 省份
+          example: "广东省"
+        city:
+          type: string
+          description: 城市
+          example: "深圳市"
+        district:
+          type: string
+          description: 区/县
+          example: "南山区"
+        detail:
+          type: string
+          description: 详细地址
+          example: "科技园路100号创新大厦A座501"
+        postCode:
+          type: integer
+          description: 邮政编码(可选)
+          example: 518000
+        isDefault:
+          type: boolean
+          description: 是否设为默认(可选)
+          example: true
+
+    # ===== 提现实体 =====
+    ExtractCashRequest:
+      type: object
+      required:
+        - extractType
+        - extractPrice
+      properties:
+        extractType:
+          type: string
+          description: 提现方式
+          enum: [bank, weixin, alipay]
+          example: "weixin"
+        extractPrice:
+          type: number
+          format: decimal
+          description: 提现金额
+          minimum: 1
+          example: 100.00
+        name:
+          type: string
+          description: 收款人姓名
+          example: "张三"
+        wechat:
+          type: string
+          description: 微信号(微信提现时必填)
+          example: "zhangsan_wx"
+
+    ExtractRecord:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 3001
+        uid:
+          type: integer
+          example: 10001
+        extractType:
+          type: string
+          example: "weixin"
+        extractPrice:
+          type: number
+          format: decimal
+          example: 100.00
+        balance:
+          type: number
+          format: decimal
+          example: 468.50
+        status:
+          type: integer
+          description: 0审核中/1已通过/-1已拒绝
+          example: 0
+        failMsg:
+          type: string
+          example: ""
+        createTime:
+          type: string
+          format: date-time
+          example: "2025-06-18T16:30:00"
+
+    # ===== 佣金实体 =====
+    CommissionData:
+      type: object
+      properties:
+        brokeragePrice:
+          type: number
+          format: decimal
+          description: 可提现佣金
+          example: 120.00
+        totalBrokeragePrice:
+          type: number
+          format: decimal
+          description: 累计佣金
+          example: 580.00
+        spreadCount:
+          type: integer
+          description: 推广人数
+          example: 8
+        spreadOrderCount:
+          type: integer
+          description: 推广订单数
+          example: 23
+        yesterdayPrice:
+          type: number
+          format: decimal
+          description: 昨日佣金
+          example: 15.50
+
+    # ===== 充值实体 =====
+    RechargePackage:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 101
+        price:
+          type: number
+          format: decimal
+          description: 充值金额
+          example: 100.00
+        givePrice:
+          type: number
+          format: decimal
+          description: 赠送金额
+          example: 10.00
+        isRecommend:
+          type: boolean
+          example: true
+
+    RechargeRequest:
+      type: object
+      required:
+        - rechargeId
+        - payType
+        - from
+      properties:
+        rechargeId:
+          type: integer
+          description: 充值套餐ID
+          example: 101
+        payType:
+          type: string
+          enum: [weixin, alipay]
+          example: "weixin"
+        from:
+          type: string
+          example: "wechat"
+
+    # ===== 签到实体 (eb_user_sign) =====
+    UserSignRecord:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 601
+        uid:
+          type: integer
+          example: 10001
+        title:
+          type: string
+          description: 签到说明
+          example: "每日签到"
+        number:
+          type: integer
+          description: 获得积分
+          example: 5
+        balance:
+          type: integer
+          description: 剩余积分
+          example: 3500
+        createTime:
+          type: string
+          format: date-time
+          example: "2025-06-20T08:00:00"
+
+    SignConfig:
+      type: object
+      properties:
+        signCycle:
+          type: integer
+          description: 签到周期(天)
+          example: 30
+        signRule:
+          type: array
+          description: 签到规则
+          items:
+            type: object
+            properties:
+              day:
+                type: integer
+                example: 1
+              integral:
+                type: integer
+                example: 5
+
+    SignMonthData:
+      type: object
+      properties:
+        signDays:
+          type: integer
+          description: 本月签到天数
+          example: 18
+        signList:
+          type: array
+          description: 本月签到日期列表
+          items:
+            type: string
+          example:
+            - "2025-06-01"
+            - "2025-06-02"
+            - "2025-06-03"
+
+    # ===== 收藏实体 (eb_user_collect) =====
+    CollectAddRequest:
+      type: object
+      required:
+        - productId
+        - category
+      properties:
+        productId:
+          type: integer
+          description: 商品ID
+          example: 5001
+        category:
+          type: string
+          description: 收藏类型 product=商品
+          example: "product"
+
+    CollectProduct:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 7001
+        productId:
+          type: integer
+          example: 5001
+        image:
+          type: string
+          example: "https://img.crmeb.com/product/sku_5001_main.jpg"
+        storeName:
+          type: string
+          example: "2025新款潮流T恤 纯棉短袖"
+        price:
+          type: number
+          format: decimal
+          example: 129.00
+        sales:
+          type: integer
+          example: 2365
+        createTime:
+          type: string
+          format: date-time
+          example: "2025-06-15T14:30:00"
+
+    # ===== 优惠券实体 (eb_store_coupon_user) =====
+    CouponSimple:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 501
+        title:
+          type: string
+          description: 优惠券名称
+          example: "满200减20"
+        couponPrice:
+          type: number
+          format: decimal
+          description: 优惠券面值
+          example: 20.00
+        useMinPrice:
+          type: number
+          format: decimal
+          description: 最低使用门槛
+          example: 200.00
+        type:
+          type: integer
+          description: 类型 1手动领取/2新人券
+          example: 1
+        totalCount:
+          type: integer
+          description: 发放总数
+          example: 1000
+        remainCount:
+          type: integer
+          description: 剩余数量
+          example: 356
+        isLimited:
+          type: boolean
+          example: true
+        startTime:
+          type: string
+          format: date-time
+          example: "2025-06-01T00:00:00"
+        endTime:
+          type: string
+          format: date-time
+          example: "2025-07-31T23:59:59"
+
+    CouponReceiveRequest:
+      type: object
+      required:
+        - couponId
+      properties:
+        couponId:
+          type: integer
+          description: 优惠券ID
+          example: 501
+
+    UserCoupon:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 9001
+        couponId:
+          type: integer
+          example: 501
+        title:
+          type: string
+          example: "满200减20"
+        couponPrice:
+          type: number
+          format: decimal
+          example: 20.00
+        useMinPrice:
+          type: number
+          format: decimal
+          example: 200.00
+        status:
+          type: integer
+          description: 状态 0未使用/1已使用/2已过期
+          example: 0
+        startTime:
+          type: string
+          format: date-time
+          example: "2025-06-20T10:00:00"
+        endTime:
+          type: string
+          format: date-time
+          example: "2025-07-20T23:59:59"
+        createTime:
+          type: string
+          format: date-time
+          example: "2025-06-20T10:00:00"
+
+    # ===== 营销-砍价实体 (eb_store_bargain) =====
+    BargainProduct:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 401
+        productId:
+          type: integer
+          example: 5101
+        title:
+          type: string
+          example: "小米电动牙刷 T500"
+        image:
+          type: string
+          example: "https://img.crmeb.com/product/sku_5101_main.jpg"
+        minPrice:
+          type: number
+          format: decimal
+          description: 最低价/砍价底价
+          example: 29.90
+        price:
+          type: number
+          format: decimal
+          description: 原价
+          example: 199.00
+        bargainNum:
+          type: integer
+          description: 帮砍次数
+          example: 15
+        lookCount:
+          type: integer
+          example: 3200
+        stock:
+          type: integer
+          example: 200
+        sales:
+          type: integer
+          example: 580
+        startTime:
+          type: string
+          format: date-time
+          example: "2025-06-01T00:00:00"
+        stopTime:
+          type: string
+          format: date-time
+          example: "2025-07-15T23:59:59"
+        status:
+          type: integer
+          example: 1
+
+    BargainStartRequest:
+      type: object
+      required:
+        - bargainId
+      properties:
+        bargainId:
+          type: integer
+          description: 砍价商品ID
+          example: 401
+
+    # ===== 营销-拼团实体 (eb_store_combination) =====
+    CombinationProduct:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 301
+        productId:
+          type: integer
+          example: 5201
+        title:
+          type: string
+          example: "2人拼团-坚果大礼包"
+        image:
+          type: string
+          example: "https://img.crmeb.com/product/sku_5201_main.jpg"
+        price:
+          type: number
+          format: decimal
+          description: 拼团价
+          example: 69.00
+        otPrice:
+          type: number
+          format: decimal
+          description: 原价
+          example: 129.00
+        people:
+          type: integer
+          description: 成团人数
+          example: 2
+        countPeople:
+          type: integer
+          description: 已参团人数
+          example: 156
+        stock:
+          type: integer
+          example: 500
+        sales:
+          type: integer
+          example: 1200
+        effectiveTime:
+          type: integer
+          description: 拼团有效期(小时)
+          example: 24
+        startTime:
+          type: string
+          format: date-time
+          example: "2025-06-01T00:00:00"
+        stopTime:
+          type: string
+          format: date-time
+          example: "2025-07-31T23:59:59"
+        status:
+          type: integer
+          example: 1
+
+    # ===== 营销-秒杀实体 (eb_store_seckill) =====
+    SeckillProduct:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 201
+        productId:
+          type: integer
+          example: 5301
+        title:
+          type: string
+          example: "华为FreeBuds 5i 无线耳机"
+        image:
+          type: string
+          example: "https://img.crmeb.com/product/sku_5301_main.jpg"
+        price:
+          type: number
+          format: decimal
+          description: 秒杀价
+          example: 199.00
+        otPrice:
+          type: number
+          format: decimal
+          description: 原价
+          example: 499.00
+        stock:
+          type: integer
+          example: 100
+        sales:
+          type: integer
+          example: 850
+        timeId:
+          type: integer
+          description: 秒杀时间段ID
+          example: 1
+        startTime:
+          type: string
+          format: date-time
+          example: "2025-06-21T10:00:00"
+        stopTime:
+          type: string
+          format: date-time
+          example: "2025-06-21T12:00:00"
+        status:
+          type: integer
+          example: 1
+
+    # ===== 文章实体 (eb_article) =====
+    Article:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 101
+        cid:
+          type: integer
+          description: 分类ID
+          example: 1
+        title:
+          type: string
+          description: 文章标题
+          example: "新用户注册指南"
+        author:
+          type: string
+          example: "CRMEB官方"
+        imageInput:
+          type: string
+          description: 封面图
+          example: "https://img.crmeb.com/article/cover_101.jpg"
+        synopsis:
+          type: string
+          description: 摘要
+          example: "本文详细介绍新用户注册流程及注意事项"
+        content:
+          type: string
+          description: 文章内容(HTML)
+          example: "<p>欢迎使用CRMEB商城...</p>"
+        visit:
+          type: integer
+          description: 浏览量
+          example: 5680
+        createTime:
+          type: string
+          format: date-time
+          example: "2025-05-01T10:00:00"
+
+    # ===== 门店实体 =====
+    StoreLocation:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1001
+        name:
+          type: string
+          description: 门店名称
+          example: "CRMEB深圳南山旗舰店"
+        phone:
+          type: string
+          example: "0755-88886666"
+        address:
+          type: string
+          description: 详细地址
+          example: "广东省深圳市南山区科技园路100号"
+        lat:
+          type: number
+          format: double
+          description: 纬度
+          example: 22.5431
+        lng:
+          type: number
+          format: double
+          description: 经度
+          example: 113.9497
+        image:
+          type: string
+          example: "https://img.crmeb.com/store/store_1001.jpg"
+        businessTime:
+          type: string
+          description: 营业时间
+          example: "09:00-21:00"
+        distance:
+          type: number
+          format: double
+          description: 距离(km)
+          example: 1.5
+
+    # ===== 城市实体 =====
+    CityItem:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 440300
+        name:
+          type: string
+          description: 城市名称
+          example: "深圳市"
+        parentId:
+          type: integer
+          description: 父级ID
+          example: 440000
+        level:
+          type: integer
+          description: 层级 1省/2市/3区
+          example: 2
+
+    # ===== 支付实体 =====
+    PaymentRequest:
+      type: object
+      required:
+        - orderNo
+        - payType
+        - from
+      properties:
+        orderNo:
+          type: string
+          description: 订单号
+          example: "20250620100000088001"
+        payType:
+          type: string
+          enum: [weixin, alipay, yue]
+          example: "weixin"
+        from:
+          type: string
+          example: "wechat"
+
+    PaymentQueryRequest:
+      type: object
+      required:
+        - orderNo
+      properties:
+        orderNo:
+          type: string
+          description: 订单号
+          example: "20250620100000088001"
+
+    PaymentResult:
+      type: object
+      properties:
+        paid:
+          type: boolean
+          description: 是否已支付
+          example: true
+        payType:
+          type: string
+          example: "weixin"
+        payTime:
+          type: string
+          format: date-time
+          example: "2025-06-20T10:05:30"
+        payPrice:
+          type: number
+          format: decimal
+          example: 238.00
+
+    # ===== 评论实体 =====
+    ProductReply:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 6001
+        uid:
+          type: integer
+          example: 10001
+        nickname:
+          type: string
+          example: "张三"
+        avatar:
+          type: string
+          example: "https://img.crmeb.com/avatar/user_10001.jpg"
+        productId:
+          type: integer
+          example: 5001
+        productScore:
+          type: integer
+          description: 商品评分 1-5
+          example: 5
+        serviceScore:
+          type: integer
+          description: 服务评分 1-5
+          example: 5
+        comment:
+          type: string
+          description: 评价内容
+          example: "质量非常好，穿着很舒服，值得购买！"
+        pics:
+          type: array
+          items:
+            type: string
+          example:
+            - "https://img.crmeb.com/comment/img_88001_1.jpg"
+        merchantReply:
+          type: string
+          description: 商家回复
+          example: "感谢您的支持，我们会继续努力！"
+        createTime:
+          type: string
+          format: date-time
+          example: "2025-06-22T15:30:00"
+
+    # ===== 首页数据 =====
+    IndexData:
+      type: object
+      properties:
+        banner:
+          type: array
+          description: 轮播图
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+                example: 1
+              pic:
+                type: string
+                example: "https://img.crmeb.com/banner/banner_01.jpg"
+              url:
+                type: string
+                example: "/pages/goods_details/index?id=5001"
+        menus:
+          type: array
+          description: 导航菜单
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+                example: 1
+              name:
+                type: string
+                example: "限时秒杀"
+              pic:
+                type: string
+                example: "https://img.crmeb.com/menu/seckill.png"
+        roll:
+          type: array
+          description: 滚动消息
+          items:
+            type: object
+          example:
+            - info: "张三 刚刚下单了2025新款潮流T恤"
+        hotProduct:
+          type: array
+          items:
+            $ref: '#/components/schemas/StoreProductSimple'
+        newProduct:
+          type: array
+          items:
+            $ref: '#/components/schemas/StoreProductSimple'
+        goodProduct:
+          type: array
+          items:
+            $ref: '#/components/schemas/StoreProductSimple'
+
+    # ===== 搜索关键词 =====
+    SearchKeyword:
+      type: object
+      properties:
+        keywords:
+          type: array
+          description: 热门搜索关键词
+          items:
+            type: string
+          example:
+            - "T恤"
+            - "防晒衣"
+            - "耳机"
+            - "电动牙刷"
+            - "坚果"
+
+    # ===== 分享配置 =====
+    ShareConfig:
+      type: object
+      properties:
+        title:
+          type: string
+          example: "CRMEB商城 - 品质生活，从这里开始"
+        image:
+          type: string
+          example: "https://img.crmeb.com/share/default.png"
+        desc:
+          type: string
+          example: "海量好物，超值优惠，尽在CRMEB商城"
+
+    # ===== 登录相关 =====
+    FrontMobileLoginRequest:
+      type: object
+      required:
+        - phone
+        - captcha
+      properties:
+        phone:
+          type: string
+          pattern: '^1[3-9]\d{9}$'
+          description: 手机号
+          example: "13800138000"
+        captcha:
+          type: string
+          minLength: 4
+          maxLength: 6
+          description: 短信验证码
+          example: "1234"
+        spread:
+          type: integer
+          description: 推广人ID(可选)
+          example: 0
+
+    FrontPasswordLoginRequest:
+      type: object
+      required:
+        - account
+        - password
+      properties:
+        account:
+          type: string
+          description: 账号(手机号)
+          example: "13800138000"
+        password:
+          type: string
+          description: 密码
+          example: "Pass@123456"
+
+    FrontLoginResponse:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 200
+        message:
+          type: string
+          example: "登录成功"
+        data:
+          type: object
+          properties:
+            token:
+              type: string
+              description: 前端认证token（UUID格式）
+              example: "{{FRONT_TOKEN}}"
+            user:
+              $ref: '#/components/schemas/User'
+
+    TokenExistResponse:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 200
+        message:
+          type: string
+          example: "token有效"
+        data:
+          type: object
+          properties:
+            valid:
+              type: boolean
+              example: true
+
+    LoginConfigResponse:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 200
+        message:
+          type: string
+          example: "success"
+        data:
+          type: object
+          properties:
+            phoneLogin:
+              type: boolean
+              description: 是否开启手机号登录
+              example: true
+            wechatLogin:
+              type: boolean
+              description: 是否开启微信登录
+              example: true
+            register:
+              type: boolean
+              description: 是否开启注册
+              example: true
+
+    # ===== 用户编辑 =====
+    UserEditRequest:
+      type: object
+      properties:
+        nickname:
+          type: string
+          maxLength: 32
+          description: 昵称
+          example: "张三丰"
+        avatar:
+          type: string
+          description: 头像URL
+          example: "https://img.crmeb.com/avatar/user_10001_new.jpg"
+        sex:
+          type: integer
+          description: 性别 0未知/1男/2女
+          example: 1
+
+    # ===== 错误响应 =====
+    ErrorResponse:
+      type: object
+      properties:
+        code:
+          type: integer
+          description: 错误码
+        message:
+          type: string
+          description: 错误消息
+        data:
+          nullable: true
+  # ===== End of schemas =====
+
+  # ===== 通用参数定义 =====
+  parameters:
+    PageParam:
+      name: page
+      in: query
+      description: 页码
+      schema:
+        type: integer
+        default: 1
+      example: 1
+    LimitParam:
+      name: limit
+      in: query
+      description: 每页数量
+      schema:
+        type: integer
+        default: 10
+      example: 10
+
+  # ===== 通用响应 =====
+  responses:
+    Unauthorized:
+      description: 未认证 / Token 无效
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            noToken:
+              summary: 缺少token
+              value:
+                code: 401
+                message: "请先登录"
+                data: null
+            invalidToken:
+              summary: token无效
+              value:
+                code: 401
+                message: "token已过期，请重新登录"
+                data: null
+    NotFound:
+      description: 资源不存在
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: 404
+            message: "资源不存在"
+            data: null
+    BadRequest:
+      description: 参数校验失败
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: 400
+            message: "参数校验失败"
+            data: null
+
+# =============================================================================
+# API 路径
+# =============================================================================
+paths:
+  # ========================================================================
+  # 1. Front-登录
+  # ========================================================================
+  /api/front/login/mobile:
+    post:
+      tags: [Front-登录]
+      summary: 手机号验证码登录
+      description: |
+        C端用户通过手机号和短信验证码登录。
+        返回前端 token（UUID 格式），token 以 UUID 格式存储到 Redis。
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FrontMobileLoginRequest'
+            examples:
+              validLogin:
+                summary: 正向-有效验证码
+                value:
+                  phone: "13800138000"
+                  captcha: "1234"
+                  spread: 0
+              wrongCaptcha:
+                summary: 异常-错误验证码
+                value:
+                  phone: "13800138000"
+                  captcha: "0000"
+              emptyPhone:
+                summary: 异常-空手机号
+                value:
+                  phone: ""
+                  captcha: "1234"
+      responses:
+        '200':
+          description: 登录成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrontLoginResponse'
+              examples:
+                success:
+                  summary: 登录成功
+                  value:
+                    code: 200
+                    message: "登录成功"
+                    data:
+                      token: "{{FRONT_TOKEN}}"
+                      user:
+                        uid: 10001
+                        nickname: "张三"
+                        phone: "13800138000"
+                        avatar: "https://img.crmeb.com/avatar/user_10001.jpg"
+                        nowMoney: 568.50
+                        brokeragePrice: 120.00
+                        integral: 3500
+                        experience: 1280
+                        status: true
+                        level: 2
+                        spreadUid: 10000
+                        isPromoter: true
+                        payCount: 15
+                        spreadCount: 8
+                        loginType: "wechat"
+                        createTime: "2025-03-15T14:22:00"
+                        lastLoginTime: "2025-06-20T09:15:00"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          description: 验证码错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                code: 401
+                message: "验证码错误"
+                data: null
+
+  /api/front/login:
+    post:
+      tags: [Front-登录]
+      summary: 账号密码登录
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FrontPasswordLoginRequest'
+            examples:
+              valid:
+                summary: 正向-正确账号密码
+                value:
+                  account: "13800138000"
+                  password: "Pass@123456"
+              wrongPassword:
+                summary: 异常-密码错误
+                value:
+                  account: "13800138000"
+                  password: "wrongpass"
+              notExist:
+                summary: 异常-账号不存在
+                value:
+                  account: "13900000000"
+                  password: "Pass@123456"
+      responses:
+        '200':
+          description: 登录成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrontLoginResponse'
+              example:
+                code: 200
+                message: "登录成功"
+                data:
+                  token: "{{FRONT_TOKEN}}"
+                  user:
+                    uid: 10001
+                    nickname: "张三"
+                    phone: "13800138000"
+                    avatar: "https://img.crmeb.com/avatar/user_10001.jpg"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /api/front/sendCode:
+    post:
+      tags: [Front-登录]
+      summary: 发送短信验证码
+      description: 向指定手机号发送短信验证码（测试环境验证码固定为1234）
+      security: []
+      parameters:
+        - name: phone
+          in: query
+          required: true
+          description: 手机号
+          schema:
+            type: string
+            pattern: '^1[3-9]\d{9}$'
+          example: "13800138000"
+      responses:
+        '200':
+          description: 发送成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResultNoData'
+              examples:
+                success:
+                  summary: 发送成功
+                  value:
+                    code: 200
+                    message: "验证码发送成功"
+                limitExceeded:
+                  summary: 发送频率限制
+                  value:
+                    code: 400
+                    message: "发送频率过快，请稍后再试"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /api/front/logout:
+    get:
+      tags: [Front-登录]
+      summary: C端登出
+      description: 退出登录，清除服务端 Redis 中的 token
+      security:
+        - FrontToken: []
+      responses:
+        '200':
+          description: 登出成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResultNoData'
+              example:
+                code: 200
+                message: "退出成功"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/front/token/is/exist:
+    post:
+      tags: [Front-登录]
+      summary: 校验token是否有效
+      description: 检查当前请求头中的 token 是否有效
+      security:
+        - FrontToken: []
+      responses:
+        '200':
+          description: 校验结果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenExistResponse'
+              examples:
+                valid:
+                  summary: token有效
+                  value:
+                    code: 200
+                    message: "token有效"
+                    data:
+                      valid: true
+                invalid:
+                  summary: token无效
+                  value:
+                    code: 401
+                    message: "token无效或已过期"
+                    data:
+                      valid: false
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/front/login/config:
+    get:
+      tags: [Front-登录]
+      summary: 获取登录配置
+      description: 获取当前系统的登录方式配置（手机号登录、微信登录等是否开启）
+      security: []
+      responses:
+        '200':
+          description: 配置信息
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginConfigResponse'
+              example:
+                code: 200
+                message: "success"
+                data:
+                  phoneLogin: true
+                  wechatLogin: true
+                  register: true
+
+  # ========================================================================
+  # 2. Front-首页
+  # ========================================================================
+  /api/front/index:
+    get:
+      tags: [Front-首页]
+      summary: 首页数据
+      description: 获取首页轮播图、菜单、推荐商品等数据
+      security: []
+      responses:
+        '200':
+          description: 首页数据
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResult'
+              example:
+                code: 200
+                message: "success"
+                data:
+                  banner:
+                    - id: 1
+                      pic: "https://img.crmeb.com/banner/banner_01.jpg"
+                      url: "/pages/goods_details/index?id=5001"
+                    - id: 2
+                      pic: "https://img.crmeb.com/banner/banner_02.jpg"
+                      url: "/pages/goods_details/index?id=5002"
+                  menus:
+                    - id: 1
+                      name: "限时秒杀"
+                      pic: "https://img.crmeb.com/menu/seckill.png"
+                    - id: 2
+                      name: "优惠券"
+                      pic: "https://img.crmeb.com/menu/coupon.png"
+                  roll:
+                    - info: "张三 刚刚下单了2025新款潮流T恤"
+                    - info: "李四 领取了满200减20优惠券"
+                  hotProduct:
+                    - id: 5001
+                      image: "https://img.crmeb.com/product/sku_5001_main.jpg"
+                      storeName: "2025新款潮流T恤 纯棉短袖"
+                      price: 129.00
+                      otPrice: 299.00
+                      sales: 2365
+
+  /api/front/index/product/{type}:
+    get:
+      tags: [Front-首页]
+      summary: 首页商品列表
+      description: "type: 1=精品推荐 2=热门榜单 3=首发新品 4=促销单品"
+      security: []
+      parameters:
+        - name: type
+          in: path
+          required: true
+          description: 商品类型
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 4
+          examples:
+            best:
+              value: 1
+              summary: 精品推荐
+            hot:
+              value: 2
+              summary: 热门榜单
+            new:
+              value: 3
+              summary: 首发新品
+            promotion:
+              value: 4
+              summary: 促销单品
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+      responses:
+        '200':
+          description: 商品列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResult'
+              example:
+                code: 200
+                message: "success"
+                data:
+                  page: 1
+                  limit: 10
+                  total: 48
+                  list:
+                    - id: 5001
+                      image: "https://img.crmeb.com/product/sku_5001_main.jpg"
+                      storeName: "2025新款潮流T恤 纯棉短袖"
+                      price: 129.00
+                      otPrice: 299.00
+                      sales: 2365
+                    - id: 5002
+                      image: "https://img.crmeb.com/product/sku_5002_main.jpg"
+                      storeName: "夏季冰丝防晒衣 UPF50+"
+                      price: 89.00
+                      otPrice: 199.00
+                      sales: 1520
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /api/front/search/keyword:
+    get:
+      tags: [Front-首页]
+      summary: 热门搜索关键词
+      security: []
+      responses:
+        '200':
+          description: 关键词列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResult'
+              example:
+                code: 200
+                message: "success"
+                data:
+                  keywords:
+                    - "T恤"
+                    - "防晒衣"
+                    - "耳机"
+                    - "电动牙刷"
+                    - "坚果"
+
+  /api/front/share:
+    get:
+      tags: [Front-首页]
+      summary: 分享配置
+      description: 获取小程序/H5 分享时的标题、图片、描述等配置
+      security: []
+      responses:
+        '200':
+          description: 分享配置
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResult'
+              example:
+                code: 200
+                message: "success"
+                data:
+                  title: "CRMEB商城 - 品质生活，从这里开始"
+                  image: "https://img.crmeb.com/share/default.png"
+                  desc: "海量好物，超值优惠，尽在CRMEB商城"
+
+  # ========================================================================
+  # 3. Front-商品
+  # ========================================================================
+  /api/front/products:
+    get:
+      tags: [Front-商品]
+      summary: 商品搜索列表
+      description: 支持按分类、关键词、价格排序搜索商品
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+        - name: cateId
+          in: query
+          description: 分类ID
+          schema:
+            type: string
+          example: "10"
+        - name: keywords
+          in: query
+          description: 搜索关键词
+          schema:
+            type: string
+          example: "T恤"
+        - name: priceOrder
+          in: query
+          description: 价格排序
+          schema:
+            type: string
+            enum: [asc, desc]
+          example: "asc"
+      responses:
+        '200':
+          description: 商品搜索列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResult'
+              examples:
+                success:
+                  summary: 搜索结果
+                  value:
+                    code: 200
+                    message: "success"
+                    data:
+                      page: 1
+                      limit: 10
+                      total: 23
+                      list:
+                        - id: 5001
+                          image: "https://img.crmeb.com/product/sku_5001_main.jpg"
+                          storeName: "2025新款潮流T恤 纯棉短袖"
+                          price: 129.00
+                          otPrice: 299.00
+                          sales: 2365
+                          isHot: true
+                        - id: 5003
+                          image: "https://img.crmeb.com/product/sku_5003_main.jpg"
+                          storeName: "宽松版纯棉T恤 情侣款"
+                          price: 99.00
+                          otPrice: 229.00
+                          sales: 1890
+                empty:
+                  summary: 无搜索结果
+                  value:
+                    code: 200
+                    message: "success"
+                    data:
+                      page: 1
+                      limit: 10
+                      total: 0
+                      list: []
+
+  /api/front/product/detail/{id}:
+    get:
+      tags: [Front-商品]
+      summary: 商品详情
+      description: 获取商品详细信息，支持普通详情和视频详情
+      security: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: 商品ID
+          schema:
+            type: integer
+          example: 5001
+        - name: type
+          in: query
+          description: 详情类型
+          schema:
+            type: string
+            enum: [normal, video]
+            default: normal
+          example: "normal"
+      responses:
+        '200':
+          description: 商品详情
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResult'
+              examples:
+                success:
+                  summary: 商品详情
+                  value:
+                    code: 200
+                    message: "success"
+                    data:
+                      id: 5001
+                      image: "https://img.crmeb.com/product/sku_5001_main.jpg"
+                      sliderImage:
+                        - "https://img.crmeb.com/product/sku_5001_1.jpg"
+                        - "https://img.crmeb.com/product/sku_5001_2.jpg"
+                        - "https://img.crmeb.com/product/sku_5001_3.jpg"
+                      storeName: "2025新款潮流T恤 纯棉短袖"
+                      storeInfo: "优质纯棉面料，透气舒适，百搭款式，多色可选"
+                      keyword: "T恤,短袖,纯棉,潮流"
+                      cateId: "10,101"
+                      price: 129.00
+                      otPrice: 299.00
+                      cost: 65.00
+                      stock: 500
+                      sales: 2365
+                      isShow: true
+                      isHot: true
+                      isNew: false
+                      isGood: true
+                      specType: true
+                      giveIntegral: 10
+                      ficti: 120
+                      browse: 8900
+                notFound:
+                  summary: 商品不存在
+                  value:
+                    code: 404
+                    message: "商品不存在"
+                    data: null
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/front/product/hot:
+    get:
+      tags: [Front-商品]
+      summary: 热门商品推荐
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+      responses:
+        '200':
+          description: 热门商品列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResult'
+
+  /api/front/product/good:
+    get:
+      tags: [Front-商品]
+      summary: 优选商品推荐
+      security: []
+      responses:
+        '200':
+          description: 优选商品列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResult'
+
+  /api/front/category:
+    get:
+      tags: [Front-商品]
+      summary: 获取分类树
+      description: 获取商品分类树形结构
+      security: []
+      responses:
+        '200':
+          description: 分类树
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResult'
+
+  /api/front/categorybypid/{pid}:
+    get:
+      tags: [Front-商品]
+      summary: 根据PID获取子分类
+      security: []
+      parameters:
+        - name: pid
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 10
+      responses:
+        '200':
+          description: 子分类列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResult'
+
+  /api/front/reply/config/{id}:
+    get:
+      tags: [Front-商品]
+      summary: 商品评论数量
+      security: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 5001
+      responses:
+        '200':
+          description: 评论数量统计
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResult'
+
+  /api/front/reply/product/{id}:
+    get:
+      tags: [Front-商品]
+      summary: 商品详情评论
+      security: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 5001
+      responses:
+        '200':
+          description: 商品详情评论
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResult'
+
+  /api/front/product/list:
+    get:
+      tags: [Front-商品]
+      summary: 商品列表(分类模型)
+      description: 个别分类模型使用的商品列表接口
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+        - name: cateId
+          in: query
+          schema:
+            type: string
+          example: "10"
+      responses:
+        '200':
+          description: 商品列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResult'
+
+  /api/front/product/sku/detail/{id}:
+    get:
+      tags: [Front-商品]
+      summary: 商品规格详情
+      security: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 5001
+      responses:
+        '200':
+          description: 规格详情
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResult'
+
+  /api/front/product/leaderboard:
+    get:
+      tags: [Front-商品]
+      summary: 商品排行榜
+      security: []
+      responses:
+        '200':
+          description: 排行榜商品
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResult'
+
+  /api/front/product/byids/{ids}:
+    get:
+      tags: [Front-商品]
+      summary: 根据商品ID集合查询
+      security: []
+      parameters:
+        - name: ids
+          in: path
+          required: true
+          schema:
+            type: array
+            items:
+              type: integer
+          example: "5001,5002,5003"
+      responses:
+        '200':
+          description: 商品列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResult'
+
+  /api/front/reply/list/{id}:
+    get:
+      tags: [Front-商品]
+      summary: 商品评论列表
+      description: 获取指定商品的用户评论，支持按好评/中评/差评筛选
+      security: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: 商品ID
+          schema:
+            type: integer
+          example: 5001
+        - name: type
+          in: query
+          description: 评论类型 0全部/1好评(4-5星)/2中评(3星)/3差评(1-2星)
+          schema:
+            type: integer
+            enum: [0, 1, 2, 3]
+            default: 0
+          example: 0
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+      responses:
+        '200':
+          description: 评论列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResult'
+              example:
+                code: 200
+                message: "success"
+                data:
+                  page: 1
+                  limit: 10
+                  total: 128
+                  list:
+                    - id: 6001
+                      uid: 10001
+                      nickname: "张三"
+                      avatar: "https://img.crmeb.com/avatar/user_10001.jpg"
+                      productScore: 5
+                      serviceScore: 5
+                      comment: "质量非常好，穿着很舒服，值得购买！"
+                      pics:
+                        - "https://img.crmeb.com/comment/img_88001_1.jpg"
+                      merchantReply: "感谢您的支持，我们会继续努力！"
+                      createTime: "2025-06-22T15:30:00"
+                    - id: 6002
+                      uid: 10002
+                      nickname: "李四"
+                      avatar: "https://img.crmeb.com/avatar/user_10002.jpg"
+                      productScore: 4
+                      serviceScore: 5
+                      comment: "面料不错，做工精细，性价比很高"
+                      pics: []
+                      merchantReply: ""
+                      createTime: "2025-06-21T10:00:00"
+
+  # ========================================================================
+  # 4. Front-购物车
+  # ========================================================================
+  /api/front/cart/list:
+    get:
+      tags: [Front-购物车]
+      summary: 购物车列表
+      security:
+        - FrontToken: []
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+      responses:
+        '200':
+          description: 购物车列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResult'
+              examples:
+                success:
+                  summary: 有商品
+                  value:
+                    code: 200
+                    message: "success"
+                    data:
+                      page: 1
+                      limit: 10
+                      total: 3
+                      list:
+                        - id: 8001
+                          uid: 10001
+                          productId: 5001
+                          productAttrUnique: "abc123def456"
+                          cartNum: 2
+                          productInfo:
+                            id: 5001
+                            image: "https://img.crmeb.com/product/sku_5001_main.jpg"
+                            storeName: "2025新款潮流T恤 纯棉短袖"
+                            price: 129.00
+                            otPrice: 299.00
+                        - id: 8002
+                          uid: 10001
+                          productId: 5002
+                          productAttrUnique: "xyz789uvw012"
+                          cartNum: 1
+                          productInfo:
+                            id: 5002
+                            image: "https://img.crmeb.com/product/sku_5002_main.jpg"
+                            storeName: "夏季冰丝防晒衣 UPF50+"
+                            price: 89.00
+                            otPrice: 199.00
+                empty:
+                  summary: 空购物车
+                  value:
+                    code: 200
+                    message: "success"
+                    data:
+                      page: 1
+                      limit: 10
+                      total: 0
+                      list: []
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/front/cart/save:
+    post:
+      tags: [Front-购物车]
+      summary: 加入购物车
+      security:
+        - FrontToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CartSaveRequest'
+            examples:
+              valid:
+                summary: 正常加入
+                value:
+                  productId: 5001
+                  productAttrUnique: "abc123def456"
+                  cartNum: 2
+                  isNew: true
+              noStock:
+                summary: 库存不足
+                value:
+                  productId: 5001
+                  productAttrUnique: "abc123def456"
+                  cartNum: 9999
+                  isNew: true
+      responses:
+        '200':
+          description: 加入成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResultNoData'
+              example:
+                code: 200
+                message: "添加成功"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/front/cart/delete:
+    post:
+      tags: [Front-购物车]
+      summary: 删除购物车商品
+      security:
+        - FrontToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CartDeleteRequest'
+            examples:
+              valid:
+                summary: 批量删除
+                value:
+                  ids: [8001, 8002]
+              single:
+                summary: 删除单个
+                value:
+                  ids: [8001]
+      responses:
+        '200':
+          description: 删除成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResultNoData'
+              example:
+                code: 200
+                message: "删除成功"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/front/cart/num:
+    post:
+      tags: [Front-购物车]
+      summary: 修改购物车商品数量
+      security:
+        - FrontToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CartNumRequest'
+            examples:
+              increase:
+                summary: 增加数量
+                value:
+                  id: 8001
+                  number: 3
+              decrease:
+                summary: 减少数量
+                value:
+                  id: 8001
+                  number: 1
+      responses:
+        '200':
+          description: 修改成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResultNoData'
+              example:
+                code: 200
+                message: "修改成功"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/front/cart/count:
+    get:
+      tags: [Front-购物车]
+      summary: 获取购物车数量
+      description: 获取当前用户购物车中商品总数量
+      security:
+        - FrontToken: []
+      responses:
+        '200':
+          description: 购物车数量
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResult'
+              example:
+                code: 200
+                message: "success"
+                data:
+                  count: 5
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # ========================================================================
+  # 5. Front-订单
+  # ========================================================================
+  /api/front/order/create:
+    post:
+      tags: [Front-订单]
+      summary: 创建订单
+      description: 根据购物车商品生成订单（预下单），返回订单号和支付信息
+      security:
+        - FrontToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderCreateRequest'
+            examples:
+              valid:
+                summary: 正常下单
+                value:
+                  cartIdList: [8001, 8002]
+                  addressId: 2001
+                  couponId: 501
+                  useIntegral: 200
+                  mark: "请发顺丰快递"
+                  preOrderNo: ""
+                  payType: "weixin"
+                  from: "wechat"
+              noCoupon:
+                summary: 不使用优惠券
+                value:
+                  cartIdList: [8001]
+                  addressId: 2001
+                  payType: "weixin"
+                  from: "routine"
+      responses:
+        '200':
+          description: 订单创建结果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResult'
+              examples:
+                success:
+                  summary: 创建成功
+                  value:
+                    code: 200
+                    message: "订单创建成功"
+                    data:
+                      orderId: "20250620100000088001"
+                stockInsufficient:
+                  summary: 库存不足
+                  value:
+                    code: 400
+                    message: "商品库存不足"
+                    data: null
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/front/order/list:
+    get:
+      tags: [Front-订单]
+      summary: 订单列表
+      description: |
+        获取用户订单列表，按状态筛选：
+        0=未付款 1=待发货 2=待收货 3=待评价 4=已完成 -3=已退款/售后
+      security:
+        - FrontToken: []
+      parameters:
+        - name: type
+          in: query
+          description: 订单类型
+          schema:
+            type: integer
+            enum: [0, 1, 2, 3, 4, -3]
+          example: 0
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+        - name: keywords
+          in: query
+          description: 搜索订单号
+          schema:
+            type: string
+          example: "20250620"
+      responses:
+        '200':
+          description: 订单列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResult'
+              example:
+                code: 200
+                message: "success"
+                data:
+                  page: 1
+                  limit: 10
+                  total: 25
+                  list:
+                    - id: 88001
+                      orderId: "20250620100000088001"
+                      payPrice: 238.00
+                      totalNum: 2
+                      paid: true
+                      status: 1
+                      createTime: "2025-06-20T10:00:00"
+                      cartInfo:
+                        - productId: 5001
+                          productName: "2025新款潮流T恤 纯棉短袖"
+                          image: "https://img.crmeb.com/product/sku_5001_main.jpg"
+                          sku: "白色 L码"
+                          price: 129.00
+                          cartNum: 2
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/front/order/detail/{orderNo}:
+    get:
+      tags: [Front-订单]
+      summary: 订单详情
+      security:
+        - FrontToken: []
+      parameters:
+        - name: orderNo
+          in: path
+          required: true
+          description: 订单号
+          schema:
+            type: string
+          example: "20250620100000088001"
+      responses:
+        '200':
+          description: 订单详情
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResult'
+              examples:
+                success:
+                  summary: 订单详情
+                  value:
+                    code: 200
+                    message: "success"
+                    data:
+                      id: 88001
+                      orderId: "20250620100000088001"
+                      uid: 10001
+                      realName: "张三"
+                      userPhone: "13800138000"
+                      userAddress: "广东省深圳市南山区科技园路100号创新大厦A座501"
+                      totalNum: 2
+                      totalPrice: 258.00
+                      payPrice: 238.00
+                      couponPrice: 20.00
+                      paid: true
+                      payType: "weixin"
+                      status: 1
+                      deliveryType: "express"
+                      createTime: "2025-06-20T10:00:00"
+                      productList:
+                        - productId: 5001
+                          productName: "2025新款潮流T恤 纯棉短袖"
+                          image: "https://img.crmeb.com/product/sku_5001_main.jpg"
+                          sku: "白色 L码"
+                          price: 129.00
+                          cartNum: 2
+                notFound:
+                  summary: 订单不存在
+                  value:
+                    code: 404
+                    message: "订单不存在"
+                    data: null
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/front/order/cancel:
+    post:
+      tags: [Front-订单]
+      summary: 取消订单
+      description: 取消未付款的订单
+      security:
+        - FrontToken: []
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/OrderCancelRequest'
+            examples:
+              valid:
+                summary: 取消未付订单
+                value:
+                  id: 88001
+      responses:
+        '200':
+          description: 取消结果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResultNoData'
+              examples:
+                success:
+                  summary: 取消成功
+                  value:
+                    code: 200
+                    message: "取消成功"
+                cannotCancel:
+                  summary: 已支付不可取消
+                  value:
+                    code: 400
+                    message: "订单已支付，无法取消"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/front/order/take:
+    post:
+      tags: [Front-订单]
+      summary: 确认收货
+      security:
+        - FrontToken: []
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/OrderTakeRequest'
+            examples:
+              valid:
+                summary: 确认收货
+                value:
+                  id: 88001
+      responses:
+        '200':
+          description: 收货结果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResultNoData'
+              example:
+                code: 200
+                message: "收货成功"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/front/order/comment:
+    post:
+      tags: [Front-订单]
+      summary: 订单评价
+      security:
+        - FrontToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderCommentRequest'
+            examples:
+              valid:
+                summary: 五星好评
+                value:
+                  productId: 5001
+                  orderNo: "20250620100000088001"
+                  score: 5
+                  comment: "质量非常好，穿着很舒服，值得购买！"
+                  pics:
+                    - "https://img.crmeb.com/comment/img_88001_1.jpg"
+                    - "https://img.crmeb.com/comment/img_88001_2.jpg"
+              minScore:
+                summary: 一星差评
+                value:
+                  productId: 5001
+                  orderNo: "20250620100000088001"
+                  score: 1
+                  comment: "商品质量很差，与图片不符"
+      responses:
+        '200':
+          description: 评价结果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResultNoData'
+              example:
+                code: 200
+                message: "评价成功"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/front/order/refund:
+    post:
+      tags: [Front-订单]
+      summary: 申请退款
+      description: 对已支付的订单发起退款申请
+      security:
+        - FrontToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderRefundRequest'
+            examples:
+              fullRefund:
+                summary: 全额退款
+                value:
+                  orderNo: "20250620100000088001"
+                  text: "商品与描述不符，申请退款"
+                  pics:
+                    - "https://img.crmeb.com/refund/img_88001_1.jpg"
+              partialRefund:
+                summary: 部分退款
+                value:
+                  orderNo: "20250620100000088001"
+                  text: "多买了一件，退其中一件"
+                  refundPrice: 129.00
+      responses:
+        '200':
+          description: 退款申请结果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResultNoData'
+              examples:
+                success:
+                  summary: 申请成功
+                  value:
+                    code: 200
+                    message: "退款申请已提交，请等待审核"
+                alreadyRefund:
+                  summary: 重复申请
+                  value:
+                    code: 400
+                    message: "该订单已有退款申请在处理中"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # ========================================================================
+  # 6. Front-支付
+  # ========================================================================
+  /api/front/pay/payment:
+    post:
+      tags: [Front-支付]
+      summary: 发起支付
+      description: 对指定订单发起支付，返回支付参数（微信/支付宝）
+      security:
+        - FrontToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PaymentRequest'
+            examples:
+              wechatPay:
+                summary: 微信支付
+                value:
+                  orderNo: "20250620100000088001"
+                  payType: "weixin"
+                  from: "wechat"
+              balancePay:
+                summary: 余额支付
+                value:
+                  orderNo: "20250620100000088001"
+                  payType: "yue"
+                  from: "wechat"
+      responses:
+        '200':
+          description: 支付结果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResult'
+              examples:
+                wechatResult:
+                  summary: 微信支付-返回JSAPI参数
+                  value:
+                    code: 200
+                    message: "success"
+                    data:
+                      appId: "wx1234567890abcdef"
+                      timeStamp: "1718870730"
+                      nonceStr: "abc123def456"
+                      package: "prepay_id=wx17188707301234567890"
+                      signType: "MD5"
+                      paySign: "ABCDEF1234567890"
+                balanceResult:
+                  summary: 余额支付-直接成功
+                  value:
+                    code: 200
+                    message: "支付成功"
+                    data: null
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/front/pay/query:
+    post:
+      tags: [Front-支付]
+      summary: 查询支付结果
+      security:
+        - FrontToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PaymentQueryRequest'
+            examples:
+              valid:
+                summary: 查询支付结果
+                value:
+                  orderNo: "20250620100000088001"
+      responses:
+        '200':
+          description: 支付查询结果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResult'
+              examples:
+                paid:
+                  summary: 已支付
+                  value:
+                    code: 200
+                    message: "success"
+                    data:
+                      paid: true
+                      payType: "weixin"
+                      payTime: "2025-06-20T10:05:30"
+                      payPrice: 238.00
+                unpaid:
+                  summary: 未支付
+                  value:
+                    code: 200
+                    message: "success"
+                    data:
+                      paid: false
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # ========================================================================
+  # 7. Front-用户中心
+  # ========================================================================
+  /api/front/user:
+    get:
+      tags: [Front-用户中心]
+      summary: 获取用户信息
+      description: 获取当前登录用户的详细信息
+      security:
+        - FrontToken: []
+      responses:
+        '200':
+          description: 用户信息
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResult'
+              example:
+                code: 200
+                message: "success"
+                data:
+                  uid: 10001
+                  nickname: "张三"
+                  avatar: "https://img.crmeb.com/avatar/user_10001.jpg"
+                  phone: "13800138000"
+                  sex: 1
+                  nowMoney: 568.50
+                  brokeragePrice: 120.00
+                  integral: 3500
+                  experience: 1280
+                  status: true
+                  level: 2
+                  spreadUid: 10000
+                  isPromoter: true
+                  payCount: 15
+                  spreadCount: 8
+                  loginType: "wechat"
+                  createTime: "2025-03-15T14:22:00"
+                  lastLoginTime: "2025-06-20T09:15:00"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/front/user/edit:
+    post:
+      tags: [Front-用户中心]
+      summary: 修改个人资料
+      description: 修改当前用户的昵称、头像、性别
+      security:
+        - FrontToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserEditRequest'
+            examples:
+              updateNickname:
+                summary: 修改昵称
+                value:
+                  nickname: "张三丰"
+              updateAvatar:
+                summary: 修改头像
+                value:
+                  avatar: "https://img.crmeb.com/avatar/user_10001_new.jpg"
+                  sex: 1
+      responses:
+        '200':
+          description: 修改结果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResultNoData'
+              example:
+                code: 200
+                message: "修改成功"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # ========================================================================
+  # 8. Front-收货地址
+  # ========================================================================
+  /api/front/user/address/list:
+    get:
+      tags: [Front-收货地址]
+      summary: 收货地址列表
+      security:
+        - FrontToken: []
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+      responses:
+        '200':
+          description: 地址列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResult'
+              example:
+                code: 200
+                message: "success"
+                data:
+                  page: 1
+                  limit: 10
+                  total: 3
+                  list:
+                    - id: 2001
+                      uid: 10001
+                      realName: "张三"
+                      phone: "13800138000"
+                      province: "广东省"
+                      city: "深圳市"
+                      district: "南山区"
+                      detail: "科技园路100号创新大厦A座501"
+                      postCode: 518000
+                      isDefault: true
+                    - id: 2002
+                      uid: 10001
+                      realName: "张三"
+                      phone: "13800138000"
+                      province: "广东省"
+                      city: "广州市"
+                      district: "天河区"
+                      detail: "天河路385号太古汇B座2201"
+                      postCode: 510620
+                      isDefault: false
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/front/user/address/edit:
+    post:
+      tags: [Front-收货地址]
+      summary: 新增/修改收货地址
+      description: |
+        新增时不传 id，修改时必传 id。
+        如果 isDefault=true，则自动取消其他默认地址。
+      security:
+        - FrontToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserAddressEditRequest'
+            examples:
+              addNew:
+                summary: 新增地址
+                value:
+                  realName: "张三"
+                  phone: "13800138000"
+                  province: "广东省"
+                  city: "深圳市"
+                  district: "南山区"
+                  detail: "科技园路100号创新大厦A座501"
+                  postCode: 518000
+                  isDefault: true
+              updateExisting:
+                summary: 修改地址
+                value:
+                  id: 2001
+                  realName: "张三"
+                  phone: "13800138000"
+                  province: "广东省"
+                  city: "深圳市"
+                  district: "福田区"
+                  detail: "华富路1006号航都大厦C座301"
+                  isDefault: true
+      responses:
+        '200':
+          description: 保存结果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResultNoData'
+              example:
+                code: 200
+                message: "保存成功"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/front/user/address/delete:
+    get:
+      tags: [Front-收货地址]
+      summary: 删除收货地址
+      security:
+        - FrontToken: []
+      parameters:
+        - name: id
+          in: query
+          required: true
+          description: 地址ID
+          schema:
+            type: integer
+          example: 2001
+      responses:
+        '200':
+          description: 删除结果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResultNoData'
+              examples:
+                success:
+                  summary: 删除成功
+                  value:
+                    code: 200
+                    message: "删除成功"
+                notFound:
+                  summary: 地址不存在
+                  value:
+                    code: 404
+                    message: "地址不存在"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/front/user/address/default:
+    get:
+      tags: [Front-收货地址]
+      summary: 获取默认地址
+      security:
+        - FrontToken: []
+      responses:
+        '200':
+          description: 默认地址
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResult'
+              examples:
+                hasDefault:
+                  summary: 有默认地址
+                  value:
+                    code: 200
+                    message: "success"
+                    data:
+                      id: 2001
+                      uid: 10001
+                      realName: "张三"
+                      phone: "13800138000"
+                      province: "广东省"
+                      city: "深圳市"
+                      district: "南山区"
+                      detail: "科技园路100号创新大厦A座501"
+                      postCode: 518000
+                      isDefault: true
+                noDefault:
+                  summary: 无默认地址
+                  value:
+                    code: 200
+                    message: "success"
+                    data: null
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/front/user/address/detail:
+    get:
+      tags: [Front-收货地址]
+      summary: 地址详情
+      security:
+        - FrontToken: []
+      parameters:
+        - name: id
+          in: query
+          required: true
+          description: 地址ID
+          schema:
+            type: integer
+          example: 2001
+      responses:
+        '200':
+          description: 地址详情
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResult'
+              example:
+                code: 200
+                message: "success"
+                data:
+                  id: 2001
+                  uid: 10001
+                  realName: "张三"
+                  phone: "13800138000"
+                  province: "广东省"
+                  city: "深圳市"
+                  district: "南山区"
+                  detail: "科技园路100号创新大厦A座501"
+                  postCode: 518000
+                  isDefault: true
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ========================================================================
+  # 9. Front-提现
+  # ========================================================================
+  /api/front/extract/cash:
+    post:
+      tags: [Front-提现]
+      summary: 申请提现
+      description: 用户申请将佣金/余额提现到银行卡、微信或支付宝
+      security:
+        - FrontToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExtractCashRequest'
+            examples:
+              wechatExtract:
+                summary: 提现到微信
+                value:
+                  extractType: "weixin"
+                  extractPrice: 100.00
+                  name: "张三"
+                  wechat: "zhangsan_wx"
+              bankExtract:
+                summary: 提现到银行卡
+                value:
+                  extractType: "bank"
+                  extractPrice: 200.00
+                  name: "张三"
+              insufficientBalance:
+                summary: 余额不足
+                value:
+                  extractType: "weixin"
+                  extractPrice: 9999.00
+      responses:
+        '200':
+          description: 提现申请结果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResultNoData'
+              examples:
+                success:
+                  summary: 申请成功
+                  value:
+                    code: 200
+                    message: "提现申请已提交，请等待审核"
+                insufficient:
+                  summary: 余额不足
+                  value:
+                    code: 400
+                    message: "可提现金额不足"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/front/extract/record:
+    get:
+      tags: [Front-提现]
+      summary: 提现记录
+      security:
+        - FrontToken: []
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+      responses:
+        '200':
+          description: 提现记录列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResult'
+              example:
+                code: 200
+                message: "success"
+                data:
+                  page: 1
+                  limit: 10
+                  total: 5
+                  list:
+                    - id: 3001
+                      uid: 10001
+                      extractType: "weixin"
+                      extractPrice: 100.00
+                      balance: 468.50
+                      status: 0
+                      createTime: "2025-06-18T16:30:00"
+                    - id: 3002
+                      uid: 10001
+                      extractType: "weixin"
+                      extractPrice: 80.00
+                      balance: 388.50
+                      status: 1
+                      createTime: "2025-05-10T11:00:00"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # ========================================================================
+  # 10. Front-推广
+  # ========================================================================
+  /api/front/commission:
+    get:
+      tags: [Front-推广]
+      summary: 推广佣金数据
+      description: 获取推广员的佣金概览数据
+      security:
+        - FrontToken: []
+      responses:
+        '200':
+          description: 佣金数据
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResult'
+              example:
+                code: 200
+                message: "success"
+                data:
+                  brokeragePrice: 120.00
+                  totalBrokeragePrice: 580.00
+                  spreadCount: 8
+                  spreadOrderCount: 23
+                  yesterdayPrice: 15.50
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # ========================================================================
+  # 11. Front-充值
+  # ========================================================================
+  /api/front/user/recharge/list:
+    get:
+      tags: [Front-充值]
+      summary: 充值套餐列表
+      security:
+        - FrontToken: []
+      responses:
+        '200':
+          description: 套餐列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResult'
+              example:
+                code: 200
+                message: "success"
+                data:
+                  list:
+                    - id: 101
+                      price: 100.00
+                      givePrice: 10.00
+                      isRecommend: true
+                    - id: 102
+                      price: 200.00
+                      givePrice: 25.00
+                      isRecommend: false
+                    - id: 103
+                      price: 500.00
+                      givePrice: 80.00
+                      isRecommend: true
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/front/user/recharge/recharge:
+    post:
+      tags: [Front-充值]
+      summary: 用户充值
+      security:
+        - FrontToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RechargeRequest'
+            examples:
+              valid:
+                summary: 充值100元
+                value:
+                  rechargeId: 101
+                  payType: "weixin"
+                  from: "wechat"
+      responses:
+        '200':
+          description: 充值结果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResult'
+              example:
+                code: 200
+                message: "success"
+                data:
+                  orderNo: "CZ20250620100000099001"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # ========================================================================
+  # 12. Front-签到
+  # ========================================================================
+  /api/front/user/sign/sign:
+    get:
+      tags: [Front-签到]
+      summary: 用户签到
+      description: 每日签到，获取积分奖励
+      security:
+        - FrontToken: []
+      responses:
+        '200':
+          description: 签到结果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResult'
+              examples:
+                success:
+                  summary: 签到成功
+                  value:
+                    code: 200
+                    message: "签到成功，获得5积分"
+                    data:
+                      integral: 5
+                      balance: 3505
+                alreadySigned:
+                  summary: 今日已签到
+                  value:
+                    code: 200
+                    message: "今日已签到"
+                    data: null
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/front/user/sign/config:
+    get:
+      tags: [Front-签到]
+      summary: 签到配置
+      description: 获取签到规则配置（签到周期、每日积分等）
+      security:
+        - FrontToken: []
+      responses:
+        '200':
+          description: 签到配置
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResult'
+              example:
+                code: 200
+                message: "success"
+                data:
+                  signCycle: 30
+                  signRule:
+                    - day: 1
+                      integral: 5
+                    - day: 2
+                      integral: 5
+                    - day: 7
+                      integral: 10
+                    - day: 15
+                      integral: 20
+                    - day: 30
+                      integral: 50
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/front/user/sign/list:
+    get:
+      tags: [Front-签到]
+      summary: 签到记录
+      security:
+        - FrontToken: []
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+      responses:
+        '200':
+          description: 签到记录
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResult'
+              example:
+                code: 200
+                message: "success"
+                data:
+                  page: 1
+                  limit: 10
+                  total: 45
+                  list:
+                    - id: 601
+                      uid: 10001
+                      title: "每日签到"
+                      number: 5
+                      balance: 3500
+                      createTime: "2025-06-20T08:00:00"
+                    - id: 600
+                      uid: 10001
+                      title: "每日签到"
+                      number: 5
+                      balance: 3495
+                      createTime: "2025-06-19T08:30:00"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/front/user/sign/month:
+    get:
+      tags: [Front-签到]
+      summary: 本月签到天数
+      description: 获取当前用户本月的签到天数及日期列表
+      security:
+        - FrontToken: []
+      responses:
+        '200':
+          description: 本月签到数据
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResult'
+              example:
+                code: 200
+                message: "success"
+                data:
+                  signDays: 18
+                  signList:
+                    - "2025-06-01"
+                    - "2025-06-02"
+                    - "2025-06-03"
+                    - "2025-06-05"
+                    - "2025-06-06"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # ========================================================================
+  # 13. Front-收藏
+  # ========================================================================
+  /api/front/user/collect/user:
+    get:
+      tags: [Front-收藏]
+      summary: 收藏列表
+      security:
+        - FrontToken: []
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+      responses:
+        '200':
+          description: 收藏列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResult'
+              example:
+                code: 200
+                message: "success"
+                data:
+                  page: 1
+                  limit: 10
+                  total: 12
+                  list:
+                    - id: 7001
+                      productId: 5001
+                      image: "https://img.crmeb.com/product/sku_5001_main.jpg"
+                      storeName: "2025新款潮流T恤 纯棉短袖"
+                      price: 129.00
+                      sales: 2365
+                      createTime: "2025-06-15T14:30:00"
+                    - id: 7002
+                      productId: 5201
+                      image: "https://img.crmeb.com/product/sku_5201_main.jpg"
+                      storeName: "2人拼团-坚果大礼包"
+                      price: 69.00
+                      sales: 1200
+                      createTime: "2025-06-10T09:15:00"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/front/user/collect/add:
+    post:
+      tags: [Front-收藏]
+      summary: 添加/取消收藏
+      description: |
+        如果已收藏则取消收藏，未收藏则添加收藏（toggle 模式）。
+        取消收藏成功返回 message: "取消收藏"
+      security:
+        - FrontToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CollectAddRequest'
+            examples:
+              add:
+                summary: 添加收藏
+                value:
+                  productId: 5001
+                  category: "product"
+              cancel:
+                summary: 取消收藏（再次调用同一接口）
+                value:
+                  productId: 5001
+                  category: "product"
+      responses:
+        '200':
+          description: 操作结果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResultNoData'
+              examples:
+                added:
+                  summary: 收藏成功
+                  value:
+                    code: 200
+                    message: "收藏成功"
+                removed:
+                  summary: 取消收藏
+                  value:
+                    code: 200
+                    message: "取消收藏"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # ========================================================================
+  # 14. Front-营销-优惠券
+  # ========================================================================
+  /api/front/coupons:
+    get:
+      tags: [Front-营销-优惠券]
+      summary: 可领优惠券列表
+      description: 获取当前可领取的优惠券列表（公开接口）
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+      responses:
+        '200':
+          description: 优惠券列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResult'
+              example:
+                code: 200
+                message: "success"
+                data:
+                  page: 1
+                  limit: 10
+                  total: 8
+                  list:
+                    - id: 501
+                      title: "满200减20"
+                      couponPrice: 20.00
+                      useMinPrice: 200.00
+                      type: 1
+                      totalCount: 1000
+                      remainCount: 356
+                      isLimited: true
+                      startTime: "2025-06-01T00:00:00"
+                      endTime: "2025-07-31T23:59:59"
+                    - id: 502
+                      title: "满500减50"
+                      couponPrice: 50.00
+                      useMinPrice: 500.00
+                      type: 1
+                      totalCount: 500
+                      remainCount: 200
+                      isLimited: true
+                      startTime: "2025-06-01T00:00:00"
+                      endTime: "2025-08-31T23:59:59"
+
+  /api/front/coupon/receive:
+    post:
+      tags: [Front-营销-优惠券]
+      summary: 领取优惠券
+      security:
+        - FrontToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CouponReceiveRequest'
+            examples:
+              valid:
+                summary: 领取成功
+                value:
+                  couponId: 501
+              alreadyReceived:
+                summary: 已领取过
+                value:
+                  couponId: 501
+      responses:
+        '200':
+          description: 领取结果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResultNoData'
+              examples:
+                success:
+                  summary: 领取成功
+                  value:
+                    code: 200
+                    message: "领取成功"
+                already:
+                  summary: 已领取
+                  value:
+                    code: 400
+                    message: "已领取过该优惠券"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # ========================================================================
+  # 15. Front-营销-砍价
+  # ========================================================================
+  /api/front/bargain/list:
+    get:
+      tags: [Front-营销-砍价]
+      summary: 砍价商品列表
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+      responses:
+        '200':
+          description: 砍价商品列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResult'
+              example:
+                code: 200
+                message: "success"
+                data:
+                  page: 1
+                  limit: 10
+                  total: 6
+                  list:
+                    - id: 401
+                      productId: 5101
+                      title: "小米电动牙刷 T500"
+                      image: "https://img.crmeb.com/product/sku_5101_main.jpg"
+                      minPrice: 29.90
+                      price: 199.00
+                      bargainNum: 15
+                      lookCount: 3200
+                      stock: 200
+                      sales: 580
+                    - id: 402
+                      productId: 5102
+                      title: "智能体脂秤 蓝牙版"
+                      image: "https://img.crmeb.com/product/sku_5102_main.jpg"
+                      minPrice: 19.90
+                      price: 129.00
+                      bargainNum: 10
+                      lookCount: 1800
+                      stock: 150
+                      sales: 320
+
+  /api/front/bargain/detail/{id}:
+    get:
+      tags: [Front-营销-砍价]
+      summary: 砍价商品详情
+      security: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: 砍价商品ID
+          schema:
+            type: integer
+          example: 401
+      responses:
+        '200':
+          description: 砍价详情
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResult'
+              example:
+                code: 200
+                message: "success"
+                data:
+                  id: 401
+                  title: "小米电动牙刷 T500"
+                  image: "https://img.crmeb.com/product/sku_5101_main.jpg"
+                  minPrice: 29.90
+                  price: 199.00
+                  bargainNum: 15
+                  lookCount: 3200
+                  stock: 200
+                  sales: 580
+                  startTime: "2025-06-01T00:00:00"
+                  stopTime: "2025-07-15T23:59:59"
+                  status: 1
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/front/bargain/start:
+    post:
+      tags: [Front-营销-砍价]
+      summary: 开启砍价
+      description: 用户参与砍价活动，发起砍价
+      security:
+        - FrontToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BargainStartRequest'
+            examples:
+              valid:
+                summary: 开启砍价
+                value:
+                  bargainId: 401
+      responses:
+        '200':
+          description: 砍价开启结果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResult'
+              example:
+                code: 200
+                message: "砍价已开启"
+                data:
+                  bargainUserId: 801
+                  bargainPrice: 189.00
+                  minPrice: 29.90
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # ========================================================================
+  # 16. Front-营销-拼团
+  # ========================================================================
+  /api/front/combination/list:
+    get:
+      tags: [Front-营销-拼团]
+      summary: 拼团商品列表
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+      responses:
+        '200':
+          description: 拼团商品列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResult'
+              example:
+                code: 200
+                message: "success"
+                data:
+                  page: 1
+                  limit: 10
+                  total: 15
+                  list:
+                    - id: 301
+                      productId: 5201
+                      title: "2人拼团-坚果大礼包"
+                      image: "https://img.crmeb.com/product/sku_5201_main.jpg"
+                      price: 69.00
+                      otPrice: 129.00
+                      people: 2
+                      countPeople: 156
+                      stock: 500
+                      sales: 1200
+                    - id: 302
+                      productId: 5202
+                      title: "3人拼团-进口牛排套餐"
+                      image: "https://img.crmeb.com/product/sku_5202_main.jpg"
+                      price: 89.00
+                      otPrice: 199.00
+                      people: 3
+                      countPeople: 89
+                      stock: 300
+                      sales: 650
+
+  /api/front/combination/detail/{id}:
+    get:
+      tags: [Front-营销-拼团]
+      summary: 拼团商品详情
+      security: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: 拼团商品ID
+          schema:
+            type: integer
+          example: 301
+      responses:
+        '200':
+          description: 拼团商品详情
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResult'
+              example:
+                code: 200
+                message: "success"
+                data:
+                  id: 301
+                  title: "2人拼团-坚果大礼包"
+                  image: "https://img.crmeb.com/product/sku_5201_main.jpg"
+                  price: 69.00
+                  otPrice: 129.00
+                  people: 2
+                  countPeople: 156
+                  stock: 500
+                  sales: 1200
+                  effectiveTime: 24
+                  startTime: "2025-06-01T00:00:00"
+                  stopTime: "2025-07-31T23:59:59"
+                  status: 1
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ========================================================================
+  # 17. Front-营销-秒杀
+  # ========================================================================
+  /api/front/seckill/list:
+    get:
+      tags: [Front-营销-秒杀]
+      summary: 秒杀商品列表
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+      responses:
+        '200':
+          description: 秒杀商品列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResult'
+              example:
+                code: 200
+                message: "success"
+                data:
+                  page: 1
+                  limit: 10
+                  total: 8
+                  list:
+                    - id: 201
+                      productId: 5301
+                      title: "华为FreeBuds 5i 无线耳机"
+                      image: "https://img.crmeb.com/product/sku_5301_main.jpg"
+                      price: 199.00
+                      otPrice: 499.00
+                      stock: 100
+                      sales: 850
+                      startTime: "2025-06-21T10:00:00"
+                      stopTime: "2025-06-21T12:00:00"
+                      status: 1
+                    - id: 202
+                      productId: 5302
+                      title: "联想ThinkPad无线鼠标"
+                      image: "https://img.crmeb.com/product/sku_5302_main.jpg"
+                      price: 29.00
+                      otPrice: 99.00
+                      stock: 200
+                      sales: 620
+                      startTime: "2025-06-21T14:00:00"
+                      stopTime: "2025-06-21T16:00:00"
+                      status: 1
+
+  /api/front/seckill/detail/{id}:
+    get:
+      tags: [Front-营销-秒杀]
+      summary: 秒杀商品详情
+      security: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: 秒杀商品ID
+          schema:
+            type: integer
+          example: 201
+      responses:
+        '200':
+          description: 秒杀商品详情
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResult'
+              example:
+                code: 200
+                message: "success"
+                data:
+                  id: 201
+                  title: "华为FreeBuds 5i 无线耳机"
+                  image: "https://img.crmeb.com/product/sku_5301_main.jpg"
+                  price: 199.00
+                  otPrice: 499.00
+                  stock: 100
+                  sales: 850
+                  startTime: "2025-06-21T10:00:00"
+                  stopTime: "2025-06-21T12:00:00"
+                  status: 1
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ========================================================================
+  # 18. Front-文章
+  # ========================================================================
+  /api/front/article/list:
+    get:
+      tags: [Front-文章]
+      summary: 文章列表
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+        - name: cid
+          in: query
+          description: 文章分类ID
+          schema:
+            type: integer
+          example: 1
+      responses:
+        '200':
+          description: 文章列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResult'
+              example:
+                code: 200
+                message: "success"
+                data:
+                  page: 1
+                  limit: 10
+                  total: 25
+                  list:
+                    - id: 101
+                      cid: 1
+                      title: "新用户注册指南"
+                      author: "CRMEB官方"
+                      imageInput: "https://img.crmeb.com/article/cover_101.jpg"
+                      synopsis: "本文详细介绍新用户注册流程及注意事项"
+                      visit: 5680
+                      createTime: "2025-05-01T10:00:00"
+                    - id: 102
+                      cid: 1
+                      title: "如何下单购买商品"
+                      author: "CRMEB官方"
+                      imageInput: "https://img.crmeb.com/article/cover_102.jpg"
+                      synopsis: "手把手教你完成下单支付全流程"
+                      visit: 4320
+                      createTime: "2025-05-05T14:00:00"
+
+  /api/front/article/detail/{id}:
+    get:
+      tags: [Front-文章]
+      summary: 文章详情
+      security: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: 文章ID
+          schema:
+            type: integer
+          example: 101
+      responses:
+        '200':
+          description: 文章详情
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResult'
+              examples:
+                success:
+                  summary: 文章详情
+                  value:
+                    code: 200
+                    message: "success"
+                    data:
+                      id: 101
+                      cid: 1
+                      title: "新用户注册指南"
+                      author: "CRMEB官方"
+                      imageInput: "https://img.crmeb.com/article/cover_101.jpg"
+                      synopsis: "本文详细介绍新用户注册流程及注意事项"
+                      content: "<p>欢迎使用CRMEB商城系统...</p><p>第一步：打开小程序...</p>"
+                      visit: 5680
+                      createTime: "2025-05-01T10:00:00"
+                notFound:
+                  summary: 文章不存在
+                  value:
+                    code: 404
+                    message: "文章不存在"
+                    data: null
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ========================================================================
+  # 19. Front-门店
+  # ========================================================================
+  /api/front/store/list:
+    get:
+      tags: [Front-门店]
+      summary: 门店列表
+      description: 获取自提门店列表，可按经纬度排序距离
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+        - name: lat
+          in: query
+          description: 纬度
+          schema:
+            type: number
+            format: double
+          example: 22.5431
+        - name: lng
+          in: query
+          description: 经度
+          schema:
+            type: number
+            format: double
+          example: 113.9497
+      responses:
+        '200':
+          description: 门店列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResult'
+              example:
+                code: 200
+                message: "success"
+                data:
+                  page: 1
+                  limit: 10
+                  total: 3
+                  list:
+                    - id: 1001
+                      name: "CRMEB深圳南山旗舰店"
+                      phone: "0755-88886666"
+                      address: "广东省深圳市南山区科技园路100号"
+                      lat: 22.5431
+                      lng: 113.9497
+                      image: "https://img.crmeb.com/store/store_1001.jpg"
+                      businessTime: "09:00-21:00"
+                      distance: 1.5
+                    - id: 1002
+                      name: "CRMEB深圳福田店"
+                      phone: "0755-88886667"
+                      address: "广东省深圳市福田区华富路101号"
+                      lat: 22.5490
+                      lng: 114.0580
+                      image: "https://img.crmeb.com/store/store_1002.jpg"
+                      businessTime: "10:00-22:00"
+                      distance: 8.3
+
+  # ========================================================================
+  # 20. Front-城市
+  # ========================================================================
+  /api/front/city/list:
+    get:
+      tags: [Front-城市]
+      summary: 城市列表
+      description: 获取省市区数据。parentId=0 获取省份列表；传入省份ID 获取城市列表；传入城市ID 获取区县列表
+      security: []
+      parameters:
+        - name: parentId
+          in: query
+          description: 父级ID (0=省份层级)
+          schema:
+            type: integer
+            default: 0
+          examples:
+            province:
+              value: 0
+              summary: 获取省份列表
+            city:
+              value: 440000
+              summary: 获取广东省的城市
+            district:
+              value: 440300
+              summary: 获取深圳市的区
+      responses:
+        '200':
+          description: 城市列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResult'
+              example:
+                code: 200
+                message: "success"
+                data:
+                  list:
+                    - id: 440000
+                      name: "广东省"
+                      parentId: 0
+                      level: 1
+                    - id: 110000
+                      name: "北京市"
+                      parentId: 0
+                      level: 1
+
+  # ========================================================================
+  # 21. Front-用户优惠券
+  # ========================================================================
+  /api/front/user/coupon/list:
+    get:
+      tags: [Front-用户优惠券]
+      summary: 我的优惠券列表
+      description: "获取当前用户已领取的优惠券。type: 0=未使用 1=已使用 2=已过期"
+      security:
+        - FrontToken: []
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+        - name: type
+          in: query
+          description: 优惠券状态
+          schema:
+            type: integer
+            enum: [0, 1, 2]
+            default: 0
+          example: 0
+      responses:
+        '200':
+          description: 我的优惠券列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResult'
+              example:
+                code: 200
+                message: "success"
+                data:
+                  page: 1
+                  limit: 10
+                  total: 5
+                  list:
+                    - id: 9001
+                      couponId: 501
+                      title: "满200减20"
+                      couponPrice: 20.00
+                      useMinPrice: 200.00
+                      status: 0
+                      startTime: "2025-06-20T10:00:00"
+                      endTime: "2025-07-20T23:59:59"
+                      createTime: "2025-06-20T10:00:00"
+                    - id: 9002
+                      couponId: 502
+                      title: "满500减50"
+                      couponPrice: 50.00
+                      useMinPrice: 500.00
+                      status: 0
+                      startTime: "2025-06-18T09:00:00"
+                      endTime: "2025-08-18T23:59:59"
+                      createTime: "2025-06-18T09:00:00"
+        '401':
+          $ref: '#/components/responses/Unauthorized'

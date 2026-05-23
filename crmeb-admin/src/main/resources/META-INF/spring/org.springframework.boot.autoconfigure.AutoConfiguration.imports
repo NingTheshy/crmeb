@@ -1,0 +1,1 @@
+# com.anji.captcha.config.AjCaptchaAutoConfiguration  # Disabled - uses javax.servlet incompatible with Spring Boot 3.x
