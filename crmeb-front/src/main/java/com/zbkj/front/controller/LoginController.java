@@ -1,13 +1,18 @@
 package com.zbkj.front.controller;
 
 
+import cn.hutool.core.util.StrUtil;
+import com.zbkj.common.constants.SmsConstants;
+import com.zbkj.common.config.CrmebConfig;
 import com.zbkj.common.request.LoginMobileRequest;
 import com.zbkj.common.request.LoginRequest;
 import com.zbkj.common.response.LoginConfigResponse;
 import com.zbkj.common.response.LoginResponse;
 import com.zbkj.common.result.CommonResult;
+import com.zbkj.common.utils.RedisUtil;
 import com.zbkj.front.service.LoginService;
 import com.zbkj.service.service.SmsService;
+import com.zbkj.service.service.SystemConfigService;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiImplicitParam;
 import io.swagger.annotations.ApiImplicitParams;
@@ -42,6 +47,15 @@ public class LoginController {
 
     @Autowired
     private LoginService loginService;
+
+    @Autowired
+    private SystemConfigService systemConfigService;
+
+    @Autowired
+    private CrmebConfig crmebConfig;
+
+    @Autowired
+    private RedisUtil redisUtil;
 
     /**
      * 手机号登录接口
@@ -101,6 +115,25 @@ public class LoginController {
     @RequestMapping(value = "/login/config", method = RequestMethod.GET)
     public CommonResult<LoginConfigResponse> getLoginConfig() {
         return CommonResult.success(loginService.getLoginConfig());
+    }
+
+    /**
+     * Mock模式：查询指定手机号的最新验证码（仅测试环境可用）
+     * @param phone 手机号
+     * @return 当前有效的验证码，无则返回null
+     */
+    @ApiOperation(value = "Mock模式查询验证码（仅测试环境）")
+    @RequestMapping(value = "/mock/code", method = RequestMethod.GET)
+    public CommonResult<String> queryMockCode(@RequestParam String phone) {
+        Boolean mockEnable = crmebConfig.getSmsMockEnable();
+        if (mockEnable == null || !mockEnable) {
+            return CommonResult.failed("Mock模式未开启，请检查crmeb.sms-mock-enable配置");
+        }
+        Object code = redisUtil.get(SmsConstants.SMS_VALIDATE_PHONE + phone);
+        if (code == null) {
+            return CommonResult.success();
+        }
+        return CommonResult.success(code.toString());
     }
 }
 

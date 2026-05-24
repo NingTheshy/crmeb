@@ -241,6 +241,11 @@ public class Constants {
     //验证码过期时间
     public static final String CONFIG_KEY_SMS_CODE_EXPIRE = "sms_code_expire";
 
+    //短信Mock模式开关（测试环境跳过一号通，直接生成验证码存入Redis）
+    public static final String CONFIG_KEY_SMS_MOCK_ENABLE = "sms_mock_enable";
+    //Mock模式下的固定验证码（方便自动化测试，为空则随机生成）
+    public static final String CONFIG_KEY_SMS_MOCK_FIXED_CODE = "sms_mock_fixed_code";
+
 
     //config配置的formId
     public static final int CONFIG_FORM_ID_INDEX = 133; //首页配置

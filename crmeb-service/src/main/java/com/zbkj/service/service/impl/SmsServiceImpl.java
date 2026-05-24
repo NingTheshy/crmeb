@@ -16,6 +16,7 @@ import com.zbkj.common.request.PageParamRequest;
 import com.zbkj.common.constants.Constants;
 import com.zbkj.common.constants.OnePassConstants;
 import com.zbkj.common.constants.SmsConstants;
+import com.zbkj.common.config.CrmebConfig;
 import com.zbkj.common.exception.CrmebException;
 import com.zbkj.common.vo.OnePassLoginVo;
 import com.zbkj.common.vo.SendSmsVo;
@@ -70,6 +71,9 @@ public class SmsServiceImpl implements SmsService {
 
     @Autowired
     private OnePassService onePassService;
+
+    @Autowired
+    private CrmebConfig crmebConfig;
 
     private static final Logger logger = LoggerFactory.getLogger(SmsServiceImpl.class);
 
@@ -332,6 +336,14 @@ public class SmsServiceImpl implements SmsService {
     @Override
     public Boolean sendCommonCode(String phone) {
         ValidateFormUtil.isPhone(phone,"手机号码错误");
+
+        // Mock模式：跳过一号通，直接生成验证码存入Redis
+        // 优先使用YAML配置（crmeb.sms-mock-enable）
+        Boolean mockEnable = crmebConfig.getSmsMockEnable();
+        if (mockEnable != null && mockEnable) {
+            return sendCommonCodeMock(phone);
+        }
+
         Boolean checkAccount = onePassService.checkAccount();
         if (!checkAccount) {
             throw new CrmebException("发送短信请先登录一号通账号");
@@ -349,6 +361,40 @@ public class SmsServiceImpl implements SmsService {
             throw new CrmebException("您的短信发送过于频繁，请稍后再试");
         }
         return sendSms(phone, SmsConstants.SMS_CONFIG_TYPE_VERIFICATION_CODE, null);
+    }
+
+    /**
+     * Mock模式发送验证码（跳过一号通API，直接生成验证码存入Redis）
+     * 验证码生命周期、Redis存储、校验逻辑与正式环境完全一致
+     */
+    private Boolean sendCommonCodeMock(String phone) {
+        // 频率限制（Mock模式可适当放宽，但仍然保留限制逻辑）
+        if (redisUtil.exists(SmsConstants.SMS_VALIDATE_PHONE_NUM + phone)) {
+            throw new CrmebException("您的短信发送过于频繁，请稍后再试");
+        }
+
+        // 获取验证码过期时间（与正式逻辑一致）
+        String codeExpireStr = systemConfigService.getValueByKey(Constants.CONFIG_KEY_SMS_CODE_EXPIRE);
+        if (StrUtil.isBlank(codeExpireStr) || Integer.parseInt(codeExpireStr) == 0) {
+            codeExpireStr = Constants.NUM_FIVE + ""; // 默认5分钟过期
+        }
+
+        // 生成验证码：优先使用固定验证码（方便自动化测试），否则随机生成
+        String fixedCode = crmebConfig.getSmsMockFixedCode();
+        Integer code;
+        if (StrUtil.isNotBlank(fixedCode)) {
+            code = Integer.valueOf(fixedCode);
+        } else {
+            code = CrmebUtil.randomCount(111111, 999999);
+        }
+
+        // 将验证码存入Redis（复用真实环境相同的Key和过期策略）
+        redisUtil.set(userService.getValidateCodeRedisKey(phone), code, Long.valueOf(codeExpireStr), TimeUnit.MINUTES);
+        // 设置发送频率限制
+        redisUtil.set(SmsConstants.SMS_VALIDATE_PHONE_NUM + phone, 1, 60L);
+
+        logger.info("============ [Mock短信] 手机号: {}, 验证码: {}, 有效期: {} 分钟 ============", phone, code, codeExpireStr);
+        return true;
     }
 
     /**

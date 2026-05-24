@@ -7529,6 +7529,8 @@ INSERT INTO `eb_system_config` VALUES (5908, 'adminLowerOrderSwitch', 'adminLowe
 INSERT INTO `eb_system_config` VALUES (5909, 'adminPaySuccessSwitch', 'adminPaySuccessSwitch', 111, '0', 0, '2021-07-16 09:47:20', '2021-07-16 09:47:20');
 INSERT INTO `eb_system_config` VALUES (5910, 'adminConfirmTakeOverSwitch', 'adminConfirmTakeOverSwitch', 111, '0', 0, '2021-07-16 09:47:20', '2021-07-16 09:47:20');
 INSERT INTO `eb_system_config` VALUES (5911, 'adminRefundSwitch', 'adminRefundSwitch', 111, '0', 0, '2021-07-16 09:47:20', '2021-07-16 09:47:20');
+INSERT INTO `eb_system_config` VALUES (5912, 'Mock短信开关', 'sms_mock_enable', 0, '1', 0, '2025-05-24 00:00:00', '2025-05-24 00:00:00');
+INSERT INTO `eb_system_config` VALUES (5913, 'Mock固定验证码', 'sms_mock_fixed_code', 0, '', 0, '2025-05-24 00:00:00', '2025-05-24 00:00:00');
 INSERT INTO `eb_system_config` VALUES (5916, 'change_color_config', 'change_color_config', 0, '3', 0, '2021-07-16 09:55:24', '2025-06-21 15:03:16');
 INSERT INTO `eb_system_config` VALUES (6081, 'category_page_config', 'category_page_config', 0, '1', 0, '2021-08-12 15:57:49', '2025-06-18 15:06:52');
 INSERT INTO `eb_system_config` VALUES (6082, 'is_show_category', 'is_show_category', 0, 'true', 0, '2021-08-12 15:59:56', '2025-05-21 16:38:26');

@@ -44,6 +44,11 @@ public class CrmebConfig {
     // 活动边框参加 指定商品参加上限
     private Integer selectProductLimit;
 
+    // 短信Mock模式开关（true=启用Mock绕过一号通，false=关闭Mock使用真实一号通）
+    private Boolean smsMockEnable;
+    // Mock模式固定验证码（为空则随机生成）
+    private String smsMockFixedCode;
+
     // 不过滤任何数据的url配置
     private List<String> ignored;
 
@@ -142,6 +147,22 @@ public class CrmebConfig {
 
     public void setSelectProductLimit(Integer selectProductLimit) {
         this.selectProductLimit = selectProductLimit;
+    }
+
+    public Boolean getSmsMockEnable() {
+        return smsMockEnable;
+    }
+
+    public void setSmsMockEnable(Boolean smsMockEnable) {
+        this.smsMockEnable = smsMockEnable;
+    }
+
+    public String getSmsMockFixedCode() {
+        return smsMockFixedCode;
+    }
+
+    public void setSmsMockFixedCode(String smsMockFixedCode) {
+        this.smsMockFixedCode = smsMockFixedCode;
     }
 
     @Override
