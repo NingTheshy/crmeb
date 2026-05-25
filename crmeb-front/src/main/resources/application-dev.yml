@@ -8,7 +8,7 @@ crmeb:
   smsMockFixedCode: "" # Mock模式固定验证码，为空则随机生成（6位数字）
 
 server:
-  port: 20510
+  port: 9081
 
 spring:
   datasource:
@@ -16,11 +16,11 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://127.0.0.1:3306/single_open?characterEncoding=utf-8&useSSL=false&serverTimeZone=GMT+8
     username: single_open
-    password: 111111
+    password: root
   redis:
     host: 127.0.0.1 #地址
     port: 6379 #端口
-    password: 111111
+    password: root
     timeout: 10000 # 连接超时时间（毫秒）
     database: 6 #默认数据库
     jedis:

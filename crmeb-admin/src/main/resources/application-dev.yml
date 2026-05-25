@@ -12,7 +12,7 @@ crmeb:
   demoSite: true # 是否演示站点 所有手机号码都会掩码
 
 server:
-  port: 20500
+  port: 9080
 
 spring:
   servlet:
@@ -24,11 +24,11 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://127.0.0.1:3306/single_open?characterEncoding=utf-8&useSSL=false&serverTimeZone=GMT+8
     username: single_open
-    password: 111111
+    password: root
   redis:
     host: 127.0.0.1 #地址
     port: 6379 #端口
-    password: 111111
+    password: root
     timeout: 10000 # 连接超时时间（毫秒）
     database: 6 #默认数据库
     jedis:
