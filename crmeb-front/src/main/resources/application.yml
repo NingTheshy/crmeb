@@ -19,6 +19,10 @@ crmeb:
     - /druid/**
     - api/front/pagediy/info
 
+  # 短信Mock模式配置
+  smsMockEnable: true # true=启用Mock绕过一号通（测试环境），false=关闭使用真实一号通
+  smsMockFixedCode: "" # Mock模式固定验证码，为空则随机生成（6位数字）
+
 # 配置端口
 server:
   port: 8081
@@ -50,7 +54,7 @@ spring:
   datasource:
     type: com.alibaba.druid.pool.DruidDataSource
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://127.0.0.1:3306/single_open?characterEncoding=utf-8&useSSL=false&serverTimeZone=GMT+8
+    url: jdbc:mysql://127.0.0.1:3306/single_open?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai
     username: root
     password: root
   redis:
